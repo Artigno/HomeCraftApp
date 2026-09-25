@@ -8,7 +8,7 @@
  */
 
 const API_BASE =
-  (import.meta.env['VITE_API_URL'] as string | undefined) ?? "https://api.homesync.local/api";
+  (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.homesync.local/api";
 
 const QUEUE_KEY = "homesync.request-queue";
 
@@ -66,11 +66,12 @@ export async function flushQueue(): Promise<void> {
     let queue = readQueue();
     while (queue.length > 0) {
       const next = queue[0];
+      if (!next) break;
       try {
         const res = await fetch(`${API_BASE}${next.path}`, {
           method: next.method,
           headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: next.body ? JSON.stringify(next.body) : undefined,
+          ...(next.body ? { body: JSON.stringify(next.body) } : {}),
         });
         if (!res.ok && res.status >= 500) break; // retry later
       } catch {

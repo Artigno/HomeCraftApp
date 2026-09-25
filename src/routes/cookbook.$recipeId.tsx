@@ -57,13 +57,16 @@ function RecipeDetail() {
   function confirmAdd() {
     const items = recipe!.ingredients
       .filter((i) => selected.includes(i.name))
-      .map((i) => ({
-        name: i.name,
-        amount: i.amount,
-        recipe_title: recipe!.title,
-        recent_purchase_days: daysSincePurchase(i.name),
-        warning_dismissed: false,
-      }));
+      .map((i) => {
+        const recentDays = daysSincePurchase(i.name);
+        return {
+          name: i.name,
+          amount: i.amount,
+          recipe_title: recipe!.title,
+          warning_dismissed: false,
+          ...(recentDays !== undefined ? { recent_purchase_days: recentDays } : {}),
+        };
+      });
     addShoppingItems(items);
     setOpen(false);
     toast.success(`Dodano ${items.length} składników`, { description: recipe!.title });
@@ -166,9 +169,7 @@ function RecipeDetail() {
                     <Checkbox
                       checked={checked}
                       onCheckedChange={(v) =>
-                        setSelected((s) =>
-                          v ? [...s, i.name] : s.filter((n) => n !== i.name),
-                        )
+                        setSelected((s) => (v ? [...s, i.name] : s.filter((n) => n !== i.name)))
                       }
                     />
                     <span className="flex-1">
@@ -189,7 +190,11 @@ function RecipeDetail() {
             })}
           </ul>
 
-          <Button className="h-12 rounded-xl text-base" onClick={confirmAdd} disabled={!selected.length}>
+          <Button
+            className="h-12 rounded-xl text-base"
+            onClick={confirmAdd}
+            disabled={!selected.length}
+          >
             Dodaj {selected.length} do listy zakupów
           </Button>
         </DialogContent>
