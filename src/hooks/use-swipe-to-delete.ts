@@ -28,6 +28,7 @@ export function useSwipeToDelete({ onDelete }: UseSwipeToDeleteOptions) {
       draggedFar.current = false;
       startX.current = e.clientX;
       startTranslate.current = translateX;
+      e.currentTarget.setPointerCapture(e.pointerId);
     },
     [translateX],
   );
@@ -40,22 +41,28 @@ export function useSwipeToDelete({ onDelete }: UseSwipeToDeleteOptions) {
     setTranslateX(next);
   }, []);
 
-  const endDrag = useCallback(() => {
-    if (!dragging.current) return;
-    dragging.current = false;
-    setTranslateX((current) => {
-      if (current <= -COMMIT_THRESHOLD) {
-        onDelete();
+  const endDrag = useCallback(
+    (e: ReactPointerEvent<HTMLElement>) => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      setTranslateX((current) => {
+        if (current <= -COMMIT_THRESHOLD) {
+          onDelete();
+          return 0;
+        }
+        if (current <= -REVEAL_THRESHOLD) {
+          setIsRevealed(true);
+          return -REVEAL_THRESHOLD;
+        }
+        setIsRevealed(false);
         return 0;
-      }
-      if (current <= -REVEAL_THRESHOLD) {
-        setIsRevealed(true);
-        return -REVEAL_THRESHOLD;
-      }
-      setIsRevealed(false);
-      return 0;
-    });
-  }, [onDelete]);
+      });
+    },
+    [onDelete],
+  );
 
   const consumeDragFlag = useCallback(() => {
     const was = draggedFar.current;

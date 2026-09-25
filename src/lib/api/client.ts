@@ -11,6 +11,7 @@ const API_BASE =
   (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.homesync.local/api";
 
 const QUEUE_KEY = "homesync.request-queue";
+const FAILED_QUEUE_KEY = "homesync.request-queue.failed";
 
 export interface QueuedRequest {
   id: string;
@@ -37,6 +38,21 @@ function writeQueue(queue: QueuedRequest[]) {
   if (!isBrowser()) return;
   window.localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
   window.dispatchEvent(new CustomEvent("homesync:queue", { detail: queue.length }));
+}
+
+/** Requests rejected by the backend (4xx) — dead-lettered here instead of silently discarded. */
+export function readFailedQueue(): QueuedRequest[] {
+  if (!isBrowser()) return [];
+  try {
+    return JSON.parse(window.localStorage.getItem(FAILED_QUEUE_KEY) ?? "[]") as QueuedRequest[];
+  } catch {
+    return [];
+  }
+}
+
+function recordFailed(request: QueuedRequest) {
+  if (!isBrowser()) return;
+  window.localStorage.setItem(FAILED_QUEUE_KEY, JSON.stringify([...readFailedQueue(), request]));
 }
 
 /** Queue a mutation against the Laravel API and try to flush immediately. */
@@ -72,8 +88,10 @@ export async function flushQueue(): Promise<void> {
           method: next.method,
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           ...(next.body ? { body: JSON.stringify(next.body) } : {}),
+          signal: AbortSignal.timeout(10_000),
         });
         if (!res.ok && res.status >= 500) break; // retry later
+        if (!res.ok) recordFailed(next); // 4xx — backend rejected it, dead-letter instead of silent drop
       } catch {
         break; // still offline / backend down -> keep the queue intact
       }

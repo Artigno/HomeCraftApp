@@ -1,10 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useHomeSync } from "@/lib/store";
 import type { ShoppingItem } from "@/lib/api/types";
 
@@ -27,6 +33,7 @@ export function ReceiptCheckoutModal({
   const [store, setStore] = useState("");
   const [total, setTotal] = useState("");
   const [category, setCategory] = useState(DEFAULT_CATEGORY);
+  const processingTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (!open) return;
@@ -36,9 +43,16 @@ export function ReceiptCheckoutModal({
     setCategory(purchases[0]?.category ?? DEFAULT_CATEGORY);
   }, [open, purchases, boughtItems.length]);
 
+  useEffect(() => {
+    if (open) return;
+    clearTimeout(processingTimeout.current);
+  }, [open]);
+
+  useEffect(() => () => clearTimeout(processingTimeout.current), []);
+
   function startProcessing() {
     setStep("processing");
-    setTimeout(() => setStep("form"), 1200);
+    processingTimeout.current = setTimeout(() => setStep("form"), 1200);
   }
 
   function handleConfirm() {
@@ -57,6 +71,9 @@ export function ReceiptCheckoutModal({
       <DialogContent className="max-w-md rounded-3xl">
         <DialogHeader className="text-left">
           <DialogTitle>Zakończ zakupy</DialogTitle>
+          <DialogDescription>
+            Dodaj zdjęcie paragonu lub pomiń je, a następnie potwierdź sklep, sumę i kategorię.
+          </DialogDescription>
         </DialogHeader>
 
         {step === "capture" && (
