@@ -353,31 +353,31 @@ None — `HomeSyncState` shape (`src/lib/api/types.ts`) is unchanged; no localSt
 
 #### Automated
 
-- [x] 3.1 Lint passes: `bun run lint`
-- [x] 3.2 Type checking passes: `bunx tsc --noEmit`
-- [x] 3.3 Build succeeds: `bun run build`
+- [x] 3.1 Lint passes: `bun run lint` — 6737793
+- [x] 3.2 Type checking passes: `bunx tsc --noEmit` — 6737793
+- [x] 3.3 Build succeeds: `bun run build` — 6737793
 
 #### Manual
 
-- [x] 3.4 "Complete Purchase" disabled at 0 checked items, enabled at ≥1
-- [x] 3.5 Photo/skip → processing state → editable form
-- [x] 3.6 Confirm archives done items, creates purchase, shows toast
-- [x] 3.7 Cancel leaves shopping list untouched
+- [x] 3.4 "Complete Purchase" disabled at 0 checked items, enabled at ≥1 — 6737793
+- [x] 3.5 Photo/skip → processing state → editable form — 6737793
+- [x] 3.6 Confirm archives done items, creates purchase, shows toast — 6737793
+- [x] 3.7 Cancel leaves shopping list untouched — 6737793
 
 ### Phase 4: Analytics / Insights
 
 #### Automated
 
-- [ ] 4.1 Lint passes: `bun run lint`
-- [ ] 4.2 Type checking passes: `bunx tsc --noEmit`
-- [ ] 4.3 Build succeeds: `bun run build`
+- [x] 4.1 Lint passes: `bun run lint`
+- [x] 4.2 Type checking passes: `bunx tsc --noEmit`
+- [x] 4.3 Build succeeds: `bun run build`
 
 #### Manual
 
-- [ ] 4.4 Tapping "Budżet" renders insights page (no 404)
-- [ ] 4.5 Donut chart correct per store; toggle to category re-groups correctly
-- [ ] 4.6 Bar chart shows correct monthly totals
-- [ ] 4.7 New purchase from Phase 3 flow reflected on next visit
+- [x] 4.4 Tapping "Budżet" renders insights page (no 404)
+- [x] 4.5 Donut chart correct per store; toggle to category re-groups correctly
+- [x] 4.6 Bar chart shows correct monthly totals
+- [x] 4.7 New purchase from Phase 3 flow reflected on next visit
 
 ### Phase 5: PWA Icons, Nav Verification & Final QA
 
