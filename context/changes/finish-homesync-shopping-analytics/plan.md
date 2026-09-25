@@ -339,30 +339,30 @@ None — `HomeSyncState` shape (`src/lib/api/types.ts`) is unchanged; no localSt
 
 #### Automated
 
-- [x] 2.1 Lint passes: `bun run lint`
-- [x] 2.2 Type checking passes: `bunx tsc --noEmit`
-- [x] 2.3 Build succeeds: `bun run build`
+- [x] 2.1 Lint passes: `bun run lint` — a789f21
+- [x] 2.2 Type checking passes: `bunx tsc --noEmit` — a789f21
+- [x] 2.3 Build succeeds: `bun run build` — a789f21
 
 #### Manual
 
-- [x] 2.4 Swipe reveals delete affordance; tap removes item
-- [x] 2.5 Warning badge shows with trash + zatwierdź actions; zatwierdź hides badge, trash removes item
-- [x] 2.6 Suggestion banner appears for overdue-to-repurchase product and is dismissible
+- [x] 2.4 Swipe reveals delete affordance; tap removes item — a789f21
+- [x] 2.5 Warning badge shows with trash + zatwierdź actions; zatwierdź hides badge, trash removes item — a789f21
+- [x] 2.6 Suggestion banner appears for overdue-to-repurchase product and is dismissible — a789f21
 
 ### Phase 3: Receipt Checkout Flow (Mocked OCR)
 
 #### Automated
 
-- [ ] 3.1 Lint passes: `bun run lint`
-- [ ] 3.2 Type checking passes: `bunx tsc --noEmit`
-- [ ] 3.3 Build succeeds: `bun run build`
+- [x] 3.1 Lint passes: `bun run lint`
+- [x] 3.2 Type checking passes: `bunx tsc --noEmit`
+- [x] 3.3 Build succeeds: `bun run build`
 
 #### Manual
 
-- [ ] 3.4 "Complete Purchase" disabled at 0 checked items, enabled at ≥1
-- [ ] 3.5 Photo/skip → processing state → editable form
-- [ ] 3.6 Confirm archives done items, creates purchase, shows toast
-- [ ] 3.7 Cancel leaves shopping list untouched
+- [x] 3.4 "Complete Purchase" disabled at 0 checked items, enabled at ≥1
+- [x] 3.5 Photo/skip → processing state → editable form
+- [x] 3.6 Confirm archives done items, creates purchase, shows toast
+- [x] 3.7 Cancel leaves shopping list untouched
 
 ### Phase 4: Analytics / Insights
 

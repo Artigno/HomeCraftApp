@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Check, Plus, Trash2, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { ReceiptCheckoutModal } from "@/components/ReceiptCheckoutModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSwipeToDelete } from "@/hooks/use-swipe-to-delete";
@@ -32,6 +33,7 @@ function ShoppingList() {
     dismissSuggestion,
   } = useHomeSync();
   const [name, setName] = useState("");
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const sorted = useMemo(
     () => [...shopping].sort((a, b) => Number(a.done) - Number(b.done)),
@@ -93,11 +95,29 @@ function ShoppingList() {
         </div>
       )}
 
-      <ul className="space-y-2 px-4 pt-3 pb-28">
+      <ul className={cn("space-y-2 px-4 pt-3", shopping.length > 0 ? "pb-3" : "pb-28")}>
         {sorted.map((item) => (
           <ShoppingListRow key={item.id} item={item} />
         ))}
       </ul>
+
+      {shopping.length > 0 && (
+        <div className="px-4 pb-28">
+          <Button
+            className="h-12 w-full rounded-xl text-base"
+            disabled={!shopping.some((i) => i.done)}
+            onClick={() => setCheckoutOpen(true)}
+          >
+            Zakończ zakupy
+          </Button>
+        </div>
+      )}
+
+      <ReceiptCheckoutModal
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        boughtItems={shopping.filter((i) => i.done)}
+      />
 
       <div className="fixed inset-x-0 bottom-16 z-30 mx-auto flex max-w-lg items-center gap-2 border-t border-border/70 bg-card/90 px-4 py-3 backdrop-blur-xl">
         <Input
