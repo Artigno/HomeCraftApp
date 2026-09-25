@@ -383,12 +383,12 @@ None — `HomeSyncState` shape (`src/lib/api/types.ts`) is unchanged; no localSt
 
 #### Automated
 
-- [x] 5.1 Lint passes: `bun run lint`
-- [x] 5.2 Type checking passes: `bunx tsc --noEmit`
-- [x] 5.3 Build succeeds: `bun run build`
+- [x] 5.1 Lint passes: `bun run lint` — d3c7284
+- [x] 5.2 Type checking passes: `bunx tsc --noEmit` — d3c7284
+- [x] 5.3 Build succeeds: `bun run build` — d3c7284
 
 #### Manual
 
-- [x] 5.4 Manifest icons load with no console errors
-- [x] 5.5 All four nav tabs work with no 404s
-- [x] 5.6 Full end-to-end walkthrough passes
+- [x] 5.4 Manifest icons load with no console errors — d3c7284
+- [x] 5.5 All four nav tabs work with no 404s — d3c7284
+- [x] 5.6 Full end-to-end walkthrough passes — d3c7284
