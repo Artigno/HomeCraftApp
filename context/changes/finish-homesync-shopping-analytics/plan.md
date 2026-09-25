@@ -324,16 +324,16 @@ None — `HomeSyncState` shape (`src/lib/api/types.ts`) is unchanged; no localSt
 
 #### Automated
 
-- [x] 1.1 Lint passes: `bun run lint`
-- [x] 1.2 Type checking passes: `bunx tsc --noEmit`
-- [x] 1.3 Build succeeds: `bun run build`
+- [x] 1.1 Lint passes: `bun run lint` — db41934
+- [x] 1.2 Type checking passes: `bunx tsc --noEmit` — db41934
+- [x] 1.3 Build succeeds: `bun run build` — db41934
 
 #### Manual
 
-- [ ] 1.4 Tapping "Zakupy" renders the shopping list (no 404)
-- [ ] 1.5 Quick-add bar adds items, stays focused, clears input
-- [ ] 1.6 Tapping an item toggles done state
-- [ ] 1.7 Recipe-added ingredients show recipe-source badge on `/shopping`
+- [x] 1.4 Tapping "Zakupy" renders the shopping list (no 404)
+- [x] 1.5 Quick-add bar adds items, stays focused, clears input
+- [x] 1.6 Tapping an item toggles done state
+- [x] 1.7 Recipe-added ingredients show recipe-source badge on `/shopping`
 
 ### Phase 2: Shopping List — Swipe-to-Delete, Warning Actions & Suggestion Banner
 
