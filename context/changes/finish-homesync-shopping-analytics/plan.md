@@ -368,27 +368,27 @@ None — `HomeSyncState` shape (`src/lib/api/types.ts`) is unchanged; no localSt
 
 #### Automated
 
-- [x] 4.1 Lint passes: `bun run lint`
-- [x] 4.2 Type checking passes: `bunx tsc --noEmit`
-- [x] 4.3 Build succeeds: `bun run build`
+- [x] 4.1 Lint passes: `bun run lint` — aea076c
+- [x] 4.2 Type checking passes: `bunx tsc --noEmit` — aea076c
+- [x] 4.3 Build succeeds: `bun run build` — aea076c
 
 #### Manual
 
-- [x] 4.4 Tapping "Budżet" renders insights page (no 404)
-- [x] 4.5 Donut chart correct per store; toggle to category re-groups correctly
-- [x] 4.6 Bar chart shows correct monthly totals
-- [x] 4.7 New purchase from Phase 3 flow reflected on next visit
+- [x] 4.4 Tapping "Budżet" renders insights page (no 404) — aea076c
+- [x] 4.5 Donut chart correct per store; toggle to category re-groups correctly — aea076c
+- [x] 4.6 Bar chart shows correct monthly totals — aea076c
+- [x] 4.7 New purchase from Phase 3 flow reflected on next visit — aea076c
 
 ### Phase 5: PWA Icons, Nav Verification & Final QA
 
 #### Automated
 
-- [ ] 5.1 Lint passes: `bun run lint`
-- [ ] 5.2 Type checking passes: `bunx tsc --noEmit`
-- [ ] 5.3 Build succeeds: `bun run build`
+- [x] 5.1 Lint passes: `bun run lint`
+- [x] 5.2 Type checking passes: `bunx tsc --noEmit`
+- [x] 5.3 Build succeeds: `bun run build`
 
 #### Manual
 
-- [ ] 5.4 Manifest icons load with no console errors
-- [ ] 5.5 All four nav tabs work with no 404s
-- [ ] 5.6 Full end-to-end walkthrough passes
+- [x] 5.4 Manifest icons load with no console errors
+- [x] 5.5 All four nav tabs work with no 404s
+- [x] 5.6 Full end-to-end walkthrough passes
