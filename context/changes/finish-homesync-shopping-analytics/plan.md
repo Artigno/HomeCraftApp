@@ -330,24 +330,24 @@ None — `HomeSyncState` shape (`src/lib/api/types.ts`) is unchanged; no localSt
 
 #### Manual
 
-- [x] 1.4 Tapping "Zakupy" renders the shopping list (no 404)
-- [x] 1.5 Quick-add bar adds items, stays focused, clears input
-- [x] 1.6 Tapping an item toggles done state
-- [x] 1.7 Recipe-added ingredients show recipe-source badge on `/shopping`
+- [x] 1.4 Tapping "Zakupy" renders the shopping list (no 404) — 69c1221
+- [x] 1.5 Quick-add bar adds items, stays focused, clears input — 69c1221
+- [x] 1.6 Tapping an item toggles done state — 69c1221
+- [x] 1.7 Recipe-added ingredients show recipe-source badge on `/shopping` — 69c1221
 
 ### Phase 2: Shopping List — Swipe-to-Delete, Warning Actions & Suggestion Banner
 
 #### Automated
 
-- [ ] 2.1 Lint passes: `bun run lint`
-- [ ] 2.2 Type checking passes: `bunx tsc --noEmit`
-- [ ] 2.3 Build succeeds: `bun run build`
+- [x] 2.1 Lint passes: `bun run lint`
+- [x] 2.2 Type checking passes: `bunx tsc --noEmit`
+- [x] 2.3 Build succeeds: `bun run build`
 
 #### Manual
 
-- [ ] 2.4 Swipe reveals delete affordance; tap removes item
-- [ ] 2.5 Warning badge shows with trash + zatwierdź actions; zatwierdź hides badge, trash removes item
-- [ ] 2.6 Suggestion banner appears for overdue-to-repurchase product and is dismissible
+- [x] 2.4 Swipe reveals delete affordance; tap removes item
+- [x] 2.5 Warning badge shows with trash + zatwierdź actions; zatwierdź hides badge, trash removes item
+- [x] 2.6 Suggestion banner appears for overdue-to-repurchase product and is dismissible
 
 ### Phase 3: Receipt Checkout Flow (Mocked OCR)
 
