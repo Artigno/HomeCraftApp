@@ -3,8 +3,8 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
-  redirect,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -81,11 +81,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  beforeLoad: ({ location }) => {
-    if (typeof window === "undefined") return;
-    if (PUBLIC_ROUTES.has(location.pathname)) return;
-    if (!isAuthenticated()) throw redirect({ to: "/login" });
-  },
+  // Auth is gated client-side only (see RootComponent's effect below), never in
+  // beforeLoad: the GH Pages static build prerenders a single shell reused for
+  // every path (spa mode + 404.html fallback), so a beforeLoad redirect here
+  // would bake one path's logged-out/in guess into that shared shell and fight
+  // the client router's own re-matching on hydration — that's what caused the
+  // /login redirect loop.
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -176,7 +177,7 @@ function TabBar() {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
-  const pathname = router.state.location.pathname;
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isPublicRoute = PUBLIC_ROUTES.has(pathname);
 
   useEffect(() => {
@@ -184,6 +185,17 @@ function RootComponent() {
       navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined);
     }
   }, []);
+
+  // Client-only auth guard — see the note on beforeLoad above for why this
+  // can't live in the router's own lifecycle for this static-shell build.
+  useEffect(() => {
+    const authed = isAuthenticated();
+    if (!isPublicRoute && !authed) {
+      void router.navigate({ to: "/login", replace: true });
+    } else if (pathname === "/login" && authed) {
+      void router.navigate({ to: "/", replace: true });
+    }
+  }, [pathname, isPublicRoute, router]);
 
   return (
     <QueryClientProvider client={queryClient}>
