@@ -6,10 +6,18 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// GH_PAGES=true switches the build to a static SPA (no server) under the
+// GH Pages project-site subpath — set by .github/workflows/deploy-gh-pages.yml.
+// Everything else (local dev, the existing Cloudflare/nitro SSR path) is unaffected.
+const isGhPages = process.env["GH_PAGES"] === "true";
+const GH_PAGES_REPO_BASE = "/HomeCraftApp/";
+
 export default defineConfig({
+  vite: { base: isGhPages ? GH_PAGES_REPO_BASE : "/" },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
+    ...(isGhPages ? { spa: { enabled: true } } : {}),
   },
 });

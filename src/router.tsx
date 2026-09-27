@@ -10,6 +10,8 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // Matches vite's `base` (set for the GH Pages project-site subpath in prod).
+    basepath: import.meta.env.BASE_URL,
   });
 
   return router;

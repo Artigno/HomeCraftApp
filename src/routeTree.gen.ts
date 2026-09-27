@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CookbookRouteImport } from './routes/cookbook'
 import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ShoppingRouteImport } from './routes/shopping'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as CookbookIndexRouteImport } from './routes/cookbook.index'
 import { Route as CookbookRecipeIdRouteImport } from './routes/cookbook.$recipeId'
 
@@ -31,9 +33,19 @@ const InsightsRoute = InsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShoppingRoute = ShoppingRouteImport.update({
   id: '/shopping',
   path: '/shopping',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CookbookIndexRoute = CookbookIndexRouteImport.update({
@@ -51,14 +63,18 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cookbook': typeof CookbookRouteWithChildren
   '/insights': typeof InsightsRoute
+  '/login': typeof LoginRoute
   '/shopping': typeof ShoppingRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
   '/cookbook/': typeof CookbookIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/insights': typeof InsightsRoute
+  '/login': typeof LoginRoute
   '/shopping': typeof ShoppingRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
   '/cookbook': typeof CookbookIndexRoute
 }
@@ -67,7 +83,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/cookbook': typeof CookbookRouteWithChildren
   '/insights': typeof InsightsRoute
+  '/login': typeof LoginRoute
   '/shopping': typeof ShoppingRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
   '/cookbook/': typeof CookbookIndexRoute
 }
@@ -77,17 +95,28 @@ export interface FileRouteTypes {
     | '/'
     | '/cookbook'
     | '/insights'
+    | '/login'
     | '/shopping'
+    | '/auth/callback'
     | '/cookbook/$recipeId'
     | '/cookbook/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/insights' | '/shopping' | '/cookbook/$recipeId' | '/cookbook'
+  to:
+    | '/'
+    | '/insights'
+    | '/login'
+    | '/shopping'
+    | '/auth/callback'
+    | '/cookbook/$recipeId'
+    | '/cookbook'
   id:
     | '__root__'
     | '/'
     | '/cookbook'
     | '/insights'
+    | '/login'
     | '/shopping'
+    | '/auth/callback'
     | '/cookbook/$recipeId'
     | '/cookbook/'
   fileRoutesById: FileRoutesById
@@ -96,7 +125,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CookbookRoute: typeof CookbookRouteWithChildren
   InsightsRoute: typeof InsightsRoute
+  LoginRoute: typeof LoginRoute
   ShoppingRoute: typeof ShoppingRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -122,11 +153,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shopping': {
       id: '/shopping'
       path: '/shopping'
       fullPath: '/shopping'
       preLoaderRoute: typeof ShoppingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cookbook/': {
@@ -164,7 +209,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CookbookRoute: CookbookRouteWithChildren,
   InsightsRoute: InsightsRoute,
+  LoginRoute: LoginRoute,
   ShoppingRoute: ShoppingRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

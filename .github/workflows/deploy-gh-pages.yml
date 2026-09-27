@@ -1,0 +1,60 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build static SPA
+        env:
+          GH_PAGES: "true"
+          # Set the `VITE_API_URL` repo variable (Settings → Secrets and variables →
+          # Actions → Variables) to the backend's public URL once HomeCraftApi is deployed.
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+        run: bun run build:gh-pages
+
+      - name: SPA fallback for client-side routing
+        run: |
+          # tanstackStart's spa mode prerenders one shell (`_shell.html`) that's
+          # served for every path; GH Pages needs it at index.html, and as
+          # 404.html too so deep links (e.g. /shopping) don't 404 on refresh.
+          cp .output/public/_shell.html .output/public/index.html
+          cp .output/public/_shell.html .output/public/404.html
+          touch .output/public/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .output/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

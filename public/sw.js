@@ -1,9 +1,16 @@
 // HomeSync service worker — app shell caching for offline-first usage.
+// Uses registration scope (not "/") so this works under a GH Pages subpath base.
 const CACHE = "homesync-v1";
-const SHELL = ["/", "/manifest.webmanifest", "/favicon.ico"];
+const SCOPE = self.registration.scope;
+const SHELL = [SCOPE, `${SCOPE}manifest.webmanifest`, `${SCOPE}favicon.ico`];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((c) => c.addAll(SHELL))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -26,8 +33,6 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE).then((c) => c.put(request, copy));
         return response;
       })
-      .catch(() =>
-        caches.match(request).then((cached) => cached || caches.match("/")),
-      ),
+      .catch(() => caches.match(request).then((cached) => cached || caches.match(SCOPE))),
   );
 });

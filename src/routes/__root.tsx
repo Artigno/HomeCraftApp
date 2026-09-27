@@ -3,18 +3,22 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  redirect,
   useRouter,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { LayoutGrid, ChefHat, ShoppingCart, PieChart } from "lucide-react";
+import { LayoutGrid, ChefHat, ShoppingCart, PieChart, LogOut } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { HomeSyncProvider } from "@/lib/store";
+import { clearAuthToken, isAuthenticated } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
+const PUBLIC_ROUTES = new Set(["/login", "/auth/callback"]);
 
 function NotFoundComponent() {
   return (
@@ -77,6 +81,11 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: ({ location }) => {
+    if (typeof window === "undefined") return;
+    if (PUBLIC_ROUTES.has(location.pathname)) return;
+    if (!isAuthenticated()) throw redirect({ to: "/login" });
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -132,6 +141,7 @@ const TABS = [
 ] as const;
 
 function TabBar() {
+  const router = useRouter();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-card/85 pb-safe backdrop-blur-xl">
       <div className="mx-auto flex max-w-lg items-stretch">
@@ -147,6 +157,17 @@ function TabBar() {
             {label}
           </Link>
         ))}
+        <button
+          type="button"
+          onClick={() => {
+            clearAuthToken();
+            void router.navigate({ to: "/login", replace: true });
+          }}
+          className="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors active:scale-95"
+        >
+          <LogOut className="size-5" />
+          Wyloguj
+        </button>
       </div>
     </nav>
   );
@@ -154,24 +175,28 @@ function TabBar() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+  const pathname = router.state.location.pathname;
+  const isPublicRoute = PUBLIC_ROUTES.has(pathname);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+      navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined);
     }
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <HomeSyncProvider>
-        <div className="mx-auto min-h-screen max-w-lg bg-background pb-24">
+        <div
+          className={cn("mx-auto min-h-screen max-w-lg bg-background", !isPublicRoute && "pb-24")}
+        >
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
         </div>
-        <TabBar />
+        {!isPublicRoute && <TabBar />}
         <Toaster position="top-center" />
       </HomeSyncProvider>
     </QueryClientProvider>
   );
 }
-
