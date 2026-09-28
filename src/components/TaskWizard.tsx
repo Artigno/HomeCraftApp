@@ -17,6 +17,16 @@ import { toast } from "sonner";
 
 const FREQUENCY_PRESETS = [2, 3, 4, 7, 14, 21, 30, 90, 180, 365];
 
+/** YYYY-MM-DD in the *local* timezone — toISOString()/slicing an ISO string
+ * both work in UTC, which shifts the shown date by a day near midnight for
+ * anyone east of UTC (e.g. Poland) and made the date picker look broken. */
+function toLocalDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 /** Lightweight on-device schema suggestion (mirrors POST /api/ai/task-schema). */
 function suggestSchema(prompt: string): {
   frequency_days: number;
@@ -76,7 +86,7 @@ export function TaskWizard({
       setColor(editingTask.color);
       setFrequency(editingTask.frequency_days);
       setOptionalField(editingTask.note ?? "Notatka");
-      setLastDoneDate(editingTask.last_done_at.slice(0, 10));
+      setLastDoneDate(toLocalDateInputValue(new Date(editingTask.last_done_at)));
     } else {
       setStep(1);
     }
@@ -103,14 +113,21 @@ export function TaskWizard({
 
   function saveDate() {
     if (!editingTask) return;
-    // Keep the original time-of-day, only the calendar date is user-editable
-    // here — good enough since status/progress are computed in whole days.
-    const originalTime = editingTask.last_done_at.slice(10);
-    updateTask(editingTask.id, {
-      last_done_at: lastDoneDate
-        ? new Date(`${lastDoneDate}${originalTime}`).toISOString()
-        : editingTask.last_done_at,
-    });
+    // Keep the original local time-of-day, only the calendar date is
+    // user-editable here — good enough since status/progress are computed in
+    // whole days. Built from local getters/setters throughout so this can't
+    // drift a day depending on the viewer's timezone (see toLocalDateInputValue).
+    let nextDone = editingTask.last_done_at;
+    if (lastDoneDate) {
+      const parts = lastDoneDate.split("-").map(Number);
+      const year = parts[0]!;
+      const month = parts[1]!;
+      const day = parts[2]!;
+      const next = new Date(editingTask.last_done_at);
+      next.setFullYear(year, month - 1, day);
+      nextDone = next.toISOString();
+    }
+    updateTask(editingTask.id, { last_done_at: nextDone });
     toast.success("Zaktualizowano datę wykonania", { description: editingTask.name });
     onOpenChange(false);
     reset();
@@ -176,7 +193,7 @@ export function TaskWizard({
                 autoFocus
                 type="date"
                 value={lastDoneDate}
-                max={new Date().toISOString().slice(0, 10)}
+                max={toLocalDateInputValue(new Date())}
                 onChange={(e) => setLastDoneDate(e.target.value)}
                 className="h-12 rounded-xl text-base"
               />
