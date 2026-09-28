@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiAuth } from "@/lib/api/client";
-import { setAuthToken, setIsOwner, setProfileComplete } from "@/lib/auth";
+import { setAuthToken, setIsOwner, setMyName } from "@/lib/auth";
 
 export const Route = createFileRoute("/join")({
   head: () => ({ meta: [{ title: "Dołącz do domu — HomeSync" }] }),
@@ -14,8 +14,7 @@ export const Route = createFileRoute("/join")({
 function JoinPage() {
   const navigate = useNavigate();
   const [shareCode, setShareCode] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
@@ -24,12 +23,11 @@ function JoinPage() {
     try {
       const res = await apiAuth<{ token: string }>("/join", {
         share_code: shareCode,
-        email,
-        password,
+        name,
       });
       if (res.ok) {
         setAuthToken(res.data.token);
-        setProfileComplete(false);
+        setMyName(name.trim());
         setIsOwner(false);
         void navigate({ to: "/", replace: true });
         return;
@@ -51,7 +49,8 @@ function JoinPage() {
       <div className="mx-auto w-full max-w-sm">
         <h1 className="text-2xl font-bold tracking-tight">Dołącz do domu</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Wpisz kod zaproszenia, który dostałeś/aś od właściciela konta.
+          Wpisz kod zaproszenia, który dostałeś/aś od właściciela konta. To urządzenie zostanie na
+          stałe powiązane z kontem — nie zakładasz osobnego loginu i hasła.
         </p>
 
         <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-3">
@@ -62,19 +61,10 @@ function JoinPage() {
             required
           />
           <Input
-            type="email"
-            placeholder="E-mail"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Twoje imię"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             required
-          />
-          <Input
-            type="password"
-            placeholder="Hasło"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
           />
           <Button type="submit" disabled={pending}>
             Dołącz

@@ -7,7 +7,7 @@
  * UI never blocks.
  */
 
-import { clearAuthToken, getAuthToken, isAuthenticated, setProfileComplete } from "../auth";
+import { clearAuthToken, getAuthToken, isAuthenticated } from "../auth";
 
 const API_BASE =
   (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.homesync.local/api";
@@ -125,17 +125,6 @@ export async function flushQueue(): Promise<void> {
           break; // don't dead-letter or retry — the queue is retried after re-login
         }
         if (!res.ok && res.status >= 500) break; // retry later
-        if (!res.ok && res.status === 422) {
-          const body = (await res.json().catch(() => undefined)) as { error?: string } | undefined;
-          if (body?.error === "profile_incomplete") {
-            // Proactive gate in store.tsx should catch this before a request
-            // is ever queued — this only fires if that flag drifted (e.g. a
-            // second tab). Leave the request queued (don't dead-letter) and
-            // flip the flag so the next gated action re-surfaces the modal.
-            setProfileComplete(false);
-            break;
-          }
-        }
         if (!res.ok) recordFailed(next); // 4xx — backend rejected it, dead-letter instead of silent drop
       } catch {
         break; // still offline / backend down -> keep the queue intact

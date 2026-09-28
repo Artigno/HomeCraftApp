@@ -5,8 +5,8 @@ import { Copy, LogOut, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiGet, apiProfile, apiRegenerateShareCode, flushQueue } from "@/lib/api/client";
-import { clearAuthToken, getIsOwner, getMyName, setMyName, setProfileComplete } from "@/lib/auth";
+import { apiGet, apiProfile, apiRegenerateShareCode } from "@/lib/api/client";
+import { clearAuthToken, getIsOwner, getMyName, setMyName } from "@/lib/auth";
 import type { ActivityPage, Household } from "@/lib/api/types";
 
 export const Route = createFileRoute("/account")({
@@ -42,9 +42,7 @@ function AccountPage() {
     try {
       const res = await apiProfile(trimmed);
       if (res.ok) {
-        setProfileComplete(true);
         setMyName(trimmed);
-        void flushQueue();
         toast.success("Zapisano imię.");
       } else {
         toast.error("Nie udało się zapisać imienia.");

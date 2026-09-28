@@ -11,7 +11,6 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { LayoutGrid, ChefHat, ShoppingCart, PieChart } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
-import { CompleteProfileModal } from "@/components/CompleteProfileModal";
 import { HomeSyncProvider } from "@/lib/store";
 import { isAuthenticated } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -206,7 +205,6 @@ function RootComponent() {
         </div>
         {!isPublicRoute && <TabBar />}
         <Toaster position="top-center" />
-        <CompleteProfileModal />
       </HomeSyncProvider>
     </QueryClientProvider>
   );
