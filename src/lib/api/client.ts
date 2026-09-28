@@ -81,6 +81,25 @@ function handleUnauthorized() {
   if (isBrowser()) window.dispatchEvent(new CustomEvent("homesync:unauthorized"));
 }
 
+/**
+ * A 403 with `{error: "household_approval_pending"}` means this account
+ * joined via share code and the owner hasn't approved it yet — every
+ * household-scoped endpoint returns this until approval. Unlike a 401,
+ * the token is still valid (don't clear it), so just ask the mounted app
+ * to navigate to /waitroom (see __root.tsx's "homesync:pending" listener).
+ * Covers both a fresh join and a resumed session that's still pending.
+ */
+async function checkPending(res: Response): Promise<boolean> {
+  if (res.status !== 403) return false;
+  const body = (await res
+    .clone()
+    .json()
+    .catch(() => undefined)) as { error?: string } | undefined;
+  if (body?.error !== "household_approval_pending") return false;
+  if (isBrowser()) window.dispatchEvent(new CustomEvent("homesync:pending"));
+  return true;
+}
+
 /** Queue a mutation against the Laravel API and try to flush immediately. */
 export function enqueue(
   method: QueuedRequest["method"],
@@ -124,6 +143,7 @@ export async function flushQueue(): Promise<void> {
           handleUnauthorized();
           break; // don't dead-letter or retry — the queue is retried after re-login
         }
+        if (await checkPending(res)) break; // stay queued — retried once the owner approves
         if (!res.ok && res.status >= 500) break; // retry later
         if (!res.ok) recordFailed(next); // 4xx — backend rejected it, dead-letter instead of silent drop
       } catch {
@@ -147,6 +167,7 @@ export async function apiGet<T>(path: string, fallback: T): Promise<T> {
       handleUnauthorized();
       return fallback;
     }
+    if (await checkPending(res)) return fallback;
     if (!res.ok) return fallback;
     return (await res.json()) as T;
   } catch {
@@ -177,10 +198,9 @@ export async function apiAuth<T>(
 }
 
 /**
- * PATCH /profile — synchronous, not queued. Unlike domain mutations, the
- * profile-completion gate (store.tsx) needs to know the result before
- * running the action it was blocking, so this bypasses enqueue().
- * Returns 204 with no body on success (confirmed against ProfileController).
+ * PATCH /profile — synchronous, not queued, since the caller (account.tsx's
+ * rename form) needs to know the result immediately rather than firing and
+ * forgetting. Returns 204 with no body on success.
  */
 export async function apiProfile(name: string): Promise<{ ok: boolean; status: number }> {
   const res = await fetch(`${API_BASE}/profile`, {

@@ -16,6 +16,7 @@ import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ShoppingRouteImport } from './routes/shopping'
+import { Route as WaitroomRouteImport } from './routes/waitroom'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as CookbookIndexRouteImport } from './routes/cookbook.index'
 import { Route as CookbookRecipeIdRouteImport } from './routes/cookbook.$recipeId'
@@ -57,6 +58,11 @@ const ShoppingRoute = ShoppingRouteImport.update({
   path: '/shopping',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WaitroomRoute = WaitroomRouteImport.update({
+  id: '/waitroom',
+  path: '/waitroom',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/shopping': typeof ShoppingRoute
+  '/waitroom': typeof WaitroomRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
   '/cookbook/new': typeof CookbookNewRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/shopping': typeof ShoppingRoute
+  '/waitroom': typeof WaitroomRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
   '/cookbook/new': typeof CookbookNewRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/shopping': typeof ShoppingRoute
+  '/waitroom': typeof WaitroomRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
   '/cookbook/new': typeof CookbookNewRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/login'
     | '/shopping'
+    | '/waitroom'
     | '/auth/callback'
     | '/cookbook/$recipeId'
     | '/cookbook/new'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/login'
     | '/shopping'
+    | '/waitroom'
     | '/auth/callback'
     | '/cookbook/$recipeId'
     | '/cookbook/new'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/login'
     | '/shopping'
+    | '/waitroom'
     | '/auth/callback'
     | '/cookbook/$recipeId'
     | '/cookbook/new'
@@ -177,6 +189,7 @@ export interface RootRouteChildren {
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
   ShoppingRoute: typeof ShoppingRoute
+  WaitroomRoute: typeof WaitroomRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
@@ -229,6 +242,13 @@ declare module '@tanstack/react-router' {
       path: '/shopping'
       fullPath: '/shopping'
       preLoaderRoute: typeof ShoppingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/waitroom': {
+      id: '/waitroom'
+      path: '/waitroom'
+      fullPath: '/waitroom'
+      preLoaderRoute: typeof WaitroomRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
@@ -295,6 +315,7 @@ const rootRouteChildren: RootRouteChildren = {
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
   ShoppingRoute: ShoppingRoute,
+  WaitroomRoute: WaitroomRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport

@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
-const PUBLIC_ROUTES = new Set(["/login", "/join", "/auth/callback"]);
+const PUBLIC_ROUTES = new Set(["/login", "/join", "/waitroom", "/auth/callback"]);
 
 function NotFoundComponent() {
   return (
@@ -193,6 +193,18 @@ function RootComponent() {
     window.addEventListener("homesync:unauthorized", onUnauthorized);
     return () => window.removeEventListener("homesync:unauthorized", onUnauthorized);
   }, [router]);
+
+  // client.ts dispatches this whenever a household-scoped request 403s with
+  // household_approval_pending — covers a resumed session that's still
+  // pending, not just the moment right after /join (which already
+  // navigates here directly).
+  useEffect(() => {
+    const onPending = () => {
+      if (pathname !== "/waitroom") void router.navigate({ to: "/waitroom", replace: true });
+    };
+    window.addEventListener("homesync:pending", onPending);
+    return () => window.removeEventListener("homesync:pending", onPending);
+  }, [router, pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>

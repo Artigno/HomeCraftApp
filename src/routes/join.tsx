@@ -29,7 +29,7 @@ function JoinPage() {
         setAuthToken(res.data.token);
         setMyName(name.trim());
         setIsOwner(false);
-        void navigate({ to: "/", replace: true });
+        void navigate({ to: "/waitroom", replace: true });
         return;
       }
       if (res.status === 429) {

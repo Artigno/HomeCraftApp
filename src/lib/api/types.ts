@@ -85,6 +85,10 @@ export interface Household {
   share_code: string | null;
 }
 
+export interface JoinStatus {
+  approved: boolean;
+}
+
 export interface ActivityLogEntry {
   id: string;
   actor_name: string;
