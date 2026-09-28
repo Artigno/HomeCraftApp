@@ -7,7 +7,7 @@
  * UI never blocks.
  */
 
-import { clearAuthToken, getAuthToken, isAuthenticated } from "../auth";
+import { clearAuthToken, getAuthToken, isAuthenticated, setProfileComplete } from "../auth";
 
 const API_BASE =
   (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.homesync.local/api";
@@ -125,6 +125,17 @@ export async function flushQueue(): Promise<void> {
           break; // don't dead-letter or retry — the queue is retried after re-login
         }
         if (!res.ok && res.status >= 500) break; // retry later
+        if (!res.ok && res.status === 422) {
+          const body = (await res.json().catch(() => undefined)) as { error?: string } | undefined;
+          if (body?.error === "profile_incomplete") {
+            // Proactive gate in store.tsx should catch this before a request
+            // is ever queued — this only fires if that flag drifted (e.g. a
+            // second tab). Leave the request queued (don't dead-letter) and
+            // flip the flag so the next gated action re-surfaces the modal.
+            setProfileComplete(false);
+            break;
+          }
+        }
         if (!res.ok) recordFailed(next); // 4xx — backend rejected it, dead-letter instead of silent drop
       } catch {
         break; // still offline / backend down -> keep the queue intact
@@ -174,6 +185,40 @@ export async function apiAuth<T>(
   return res.ok
     ? { ok: true, status: res.status, data: data as T }
     : { ok: false, status: res.status, data };
+}
+
+/**
+ * PATCH /profile — synchronous, not queued. Unlike domain mutations, the
+ * profile-completion gate (store.tsx) needs to know the result before
+ * running the action it was blocking, so this bypasses enqueue().
+ * Returns 204 with no body on success (confirmed against ProfileController).
+ */
+export async function apiProfile(name: string): Promise<{ ok: boolean; status: number }> {
+  const res = await fetch(`${API_BASE}/profile`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ name }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  return { ok: res.ok, status: res.status };
+}
+
+/** POST /household/share-code — synchronous, owner-only (403 for non-owners). */
+export async function apiRegenerateShareCode(): Promise<
+  { ok: true; share_code: string } | { ok: false; status: number }
+> {
+  const res = await fetch(`${API_BASE}/household/share-code`, {
+    method: "POST",
+    headers: { Accept: "application/json", ...authHeaders() },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) return { ok: false, status: res.status };
+  const data = (await res.json()) as { share_code: string };
+  return { ok: true, share_code: data.share_code };
 }
 
 export { API_BASE };
