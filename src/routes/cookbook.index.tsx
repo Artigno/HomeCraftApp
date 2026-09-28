@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Clock, Ruler, Users } from "lucide-react";
+import { Clock, Plus, Ruler, Users } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { useHomeSync } from "@/lib/store";
@@ -40,12 +40,19 @@ function CookbookList() {
         title="Przepisy"
         subtitle={`${recipes.length} dań w kolekcji`}
         action={
-          <Button variant="outline" size="sm" className="h-9 rounded-full" asChild>
-            <Link to="/cookbook/tins">
-              <Ruler className="size-4" />
-              Moje blaszki
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-9 rounded-full" asChild>
+              <Link to="/cookbook/tins">
+                <Ruler className="size-4" />
+                Moje blaszki
+              </Link>
+            </Button>
+            <Button size="icon" className="size-9 shrink-0 rounded-full" asChild>
+              <Link to="/cookbook/new" aria-label="Dodaj przepis">
+                <Plus className="size-4" />
+              </Link>
+            </Button>
+          </div>
         }
       />
 
