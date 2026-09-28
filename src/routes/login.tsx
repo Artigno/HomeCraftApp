@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -92,6 +92,13 @@ function LoginPage() {
         >
           {mode === "login" ? "Nie masz konta? Zarejestruj się" : "Masz już konto? Zaloguj się"}
         </button>
+
+        <Link
+          to="/join"
+          className="mt-1 block w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+        >
+          Masz kod zaproszenia? Dołącz
+        </Link>
 
         <div className="mt-6 flex items-center gap-3 text-xs text-muted-foreground">
           <div className="h-px flex-1 bg-border" />

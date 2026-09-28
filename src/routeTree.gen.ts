@@ -10,8 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as CookbookRouteImport } from './routes/cookbook'
 import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as JoinRouteImport } from './routes/join'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ShoppingRouteImport } from './routes/shopping'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -25,6 +27,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CookbookRoute = CookbookRouteImport.update({
   id: '/cookbook',
   path: '/cookbook',
@@ -33,6 +40,11 @@ const CookbookRoute = CookbookRouteImport.update({
 const InsightsRoute = InsightsRouteImport.update({
   id: '/insights',
   path: '/insights',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -73,8 +85,10 @@ const CookbookTinsRoute = CookbookTinsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/cookbook': typeof CookbookRouteWithChildren
   '/insights': typeof InsightsRoute
+  '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/shopping': typeof ShoppingRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -85,7 +99,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/insights': typeof InsightsRoute
+  '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/shopping': typeof ShoppingRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -97,8 +113,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/cookbook': typeof CookbookRouteWithChildren
   '/insights': typeof InsightsRoute
+  '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/shopping': typeof ShoppingRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -111,8 +129,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/cookbook'
     | '/insights'
+    | '/join'
     | '/login'
     | '/shopping'
     | '/auth/callback'
@@ -123,7 +143,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
     | '/insights'
+    | '/join'
     | '/login'
     | '/shopping'
     | '/auth/callback'
@@ -134,8 +156,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/cookbook'
     | '/insights'
+    | '/join'
     | '/login'
     | '/shopping'
     | '/auth/callback'
@@ -147,8 +171,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   CookbookRoute: typeof CookbookRouteWithChildren
   InsightsRoute: typeof InsightsRoute
+  JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
   ShoppingRoute: typeof ShoppingRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -163,6 +189,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cookbook': {
       id: '/cookbook'
       path: '/cookbook'
@@ -175,6 +208,13 @@ declare module '@tanstack/react-router' {
       path: '/insights'
       fullPath: '/insights'
       preLoaderRoute: typeof InsightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -249,8 +289,10 @@ const CookbookRouteWithChildren = CookbookRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   CookbookRoute: CookbookRouteWithChildren,
   InsightsRoute: InsightsRoute,
+  JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
   ShoppingRoute: ShoppingRoute,
   AuthCallbackRoute: AuthCallbackRoute,
