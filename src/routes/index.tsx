@@ -39,15 +39,22 @@ function Dashboard() {
   const [dateEditingTask, setDateEditingTask] = useState<MaintenanceTask | null>(null);
   const [actionsTask, setActionsTask] = useState<MaintenanceTask | null>(null);
 
+  // Most urgent (highest days-elapsed ÷ frequency ratio, i.e. closest to or
+  // past due — red) first, freshest (just logged) last. Sorting descending
+  // directly, in one pass, inside the memo — a separate .reverse() call
+  // mutates the memoized array in place on every render (not just when
+  // `tasks` changes), flipping the order back and forth on unrelated
+  // re-renders (toast, editMode toggle, ...), which is what caused tiles to
+  // jump around.
   const sorted = useMemo(
     () =>
       [...tasks].sort(
         (a, b) =>
-          daysBetween(a.last_done_at) / a.frequency_days -
-          daysBetween(b.last_done_at) / b.frequency_days,
+          daysBetween(b.last_done_at) / b.frequency_days -
+          daysBetween(a.last_done_at) / a.frequency_days,
       ),
     [tasks],
-  ).reverse();
+  );
 
   const overdue = sorted.filter((t) => taskStatus(t) === "overdue").length;
 
