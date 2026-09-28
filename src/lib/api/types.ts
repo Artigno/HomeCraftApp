@@ -24,6 +24,7 @@ export interface RecipeIngredient {
 
 export interface Recipe {
   id: string;
+  tin_id?: string;
   title: string;
   tags: string[];
   prep_minutes: number;
@@ -31,6 +32,19 @@ export interface Recipe {
   emoji: string;
   ingredients: RecipeIngredient[];
   steps: string[];
+}
+
+export type TinShape = "round" | "rectangular";
+
+export interface Tin {
+  id: string;
+  name: string;
+  shape: TinShape;
+  diameter_cm?: number;
+  width_cm?: number;
+  length_cm?: number;
+  height_cm?: number;
+  notes?: string;
 }
 
 export interface ShoppingItem {
@@ -69,5 +83,6 @@ export interface HomeSyncState {
   recipes: Recipe[];
   shopping: ShoppingItem[];
   purchases: Purchase[];
+  tins: Tin[];
   dismissed_suggestions: string[];
 }

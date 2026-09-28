@@ -1,7 +1,8 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Clock, Users } from "lucide-react";
+import { Clock, Ruler, Users } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
 import { useHomeSync } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +36,18 @@ function CookbookList() {
 
   return (
     <div>
-      <PageHeader title="Przepisy" subtitle={`${recipes.length} dań w kolekcji`} />
+      <PageHeader
+        title="Przepisy"
+        subtitle={`${recipes.length} dań w kolekcji`}
+        action={
+          <Button variant="outline" size="sm" className="h-9 rounded-full" asChild>
+            <Link to="/cookbook/tins">
+              <Ruler className="size-4" />
+              Moje blaszki
+            </Link>
+          </Button>
+        }
+      />
 
       <div className="flex gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none]">
         {tags.map((t) => (
@@ -45,7 +57,9 @@ function CookbookList() {
             onClick={() => setFilter(t)}
             className={cn(
               "shrink-0 rounded-full px-3.5 py-2 text-sm font-medium transition-transform active:scale-95",
-              filter === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+              filter === t
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground",
             )}
           >
             {t}

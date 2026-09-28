@@ -206,6 +206,7 @@ export function createSeedState(): HomeSyncState {
         lines: [{ name: "Kawa ziarnista", price: 49.99 }],
       },
     ],
+    tins: [],
     dismissed_suggestions: [],
   };
 }

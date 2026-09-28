@@ -1,6 +1,6 @@
 import { Link, createFileRoute, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { ChevronLeft, Clock, ListPlus, TriangleAlert, Users } from "lucide-react";
+import { ChevronLeft, Clock, ListPlus, Ruler, TriangleAlert, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,8 +28,9 @@ export const Route = createFileRoute("/cookbook/$recipeId")({
 
 function RecipeDetail() {
   const { recipeId } = useParams({ from: "/cookbook/$recipeId" });
-  const { recipes, shopping, addShoppingItems, daysSincePurchase } = useHomeSync();
+  const { recipes, tins, shopping, addShoppingItems, daysSincePurchase } = useHomeSync();
   const recipe = recipes.find((r) => r.id === recipeId);
+  const tin = recipe?.tin_id ? tins.find((t) => t.id === recipe.tin_id) : undefined;
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -98,6 +99,12 @@ function RecipeDetail() {
                 <Users className="size-4" />
                 {recipe.servings} porcje
               </span>
+              {tin && (
+                <span className="flex items-center gap-1">
+                  <Ruler className="size-4" />
+                  {tin.name}
+                </span>
+              )}
             </div>
           </div>
         </div>

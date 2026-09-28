@@ -16,6 +16,7 @@ import type {
   Recipe,
   ShoppingItem,
   TaskStatus,
+  Tin,
 } from "./api/types";
 import { isAuthenticated } from "./auth";
 import { createSeedState } from "./seed";
@@ -36,6 +37,8 @@ interface StoreValue extends HomeSyncState {
   dismissSuggestion: (name: string) => void;
   daysSincePurchase: (name: string) => number | undefined;
   addRecipe: (recipe: Omit<Recipe, "id">) => void;
+  addTin: (tin: Omit<Tin, "id">) => void;
+  removeTin: (id: string) => void;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -71,17 +74,27 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
   // there, and a second device never sees the first device's data at all.
   const syncFromBackend = useCallback(async () => {
     if (!isAuthenticated()) return;
-    const [tasks, recipes, shopping, purchases] = await Promise.all([
+    const [tasks, recipes, shopping, purchases, tins] = await Promise.all([
       apiGet<MaintenanceTask[] | null>("/maintenance-tasks", null),
       apiGet<Recipe[] | null>("/recipes", null),
       apiGet<ShoppingItem[] | null>("/shopping-items", null),
       apiGet<Purchase[] | null>("/purchases", null),
+      apiGet<Tin[] | null>("/tins", null),
     ]);
     // null means the request failed (offline, 401, ...) — apiGet already
     // handles those; keep whatever's local and let the queue sync later.
-    if (tasks === null || recipes === null || shopping === null || purchases === null) return;
+    if (
+      tasks === null ||
+      recipes === null ||
+      shopping === null ||
+      purchases === null ||
+      tins === null
+    ) {
+      return;
+    }
 
-    const backendHasData = tasks.length + recipes.length + shopping.length + purchases.length > 0;
+    const backendHasData =
+      tasks.length + recipes.length + shopping.length + purchases.length + tins.length > 0;
     if (!backendHasData) {
       // Brand-new account with nothing on the backend yet: seed it once,
       // exactly like a fresh device would, so there's demo content either way.
@@ -89,7 +102,7 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setState((s) => ({ ...s, tasks, recipes, shopping, purchases, logs: [] }));
+    setState((s) => ({ ...s, tasks, recipes, shopping, purchases, tins, logs: [] }));
   }, []);
 
   useEffect(() => {
@@ -226,6 +239,15 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         const created: Recipe = { ...recipe, id: crypto.randomUUID() };
         setState((s) => ({ ...s, recipes: [created, ...s.recipes] }));
         enqueue("POST", "/recipes", created);
+      },
+      addTin: (tin) => {
+        const created: Tin = { ...tin, id: crypto.randomUUID() };
+        setState((s) => ({ ...s, tins: [created, ...s.tins] }));
+        enqueue("POST", "/tins", created);
+      },
+      removeTin: (id) => {
+        setState((s) => ({ ...s, tins: s.tins.filter((t) => t.id !== id) }));
+        enqueue("DELETE", `/tins/${id}`);
       },
     }),
     [state, hydrated, pendingSync, haptic, daysSincePurchase],

@@ -17,6 +17,7 @@ import { Route as ShoppingRouteImport } from './routes/shopping'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as CookbookIndexRouteImport } from './routes/cookbook.index'
 import { Route as CookbookRecipeIdRouteImport } from './routes/cookbook.$recipeId'
+import { Route as CookbookTinsRouteImport } from './routes/cookbook.tins'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,6 +59,11 @@ const CookbookRecipeIdRoute = CookbookRecipeIdRouteImport.update({
   path: '/$recipeId',
   getParentRoute: () => CookbookRoute,
 } as any)
+const CookbookTinsRoute = CookbookTinsRouteImport.update({
+  id: '/tins',
+  path: '/tins',
+  getParentRoute: () => CookbookRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/shopping': typeof ShoppingRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
+  '/cookbook/tins': typeof CookbookTinsRoute
   '/cookbook/': typeof CookbookIndexRoute
 }
 export interface FileRoutesByTo {
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/shopping': typeof ShoppingRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
+  '/cookbook/tins': typeof CookbookTinsRoute
   '/cookbook': typeof CookbookIndexRoute
 }
 export interface FileRoutesById {
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/shopping': typeof ShoppingRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
+  '/cookbook/tins': typeof CookbookTinsRoute
   '/cookbook/': typeof CookbookIndexRoute
 }
 export interface FileRouteTypes {
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/shopping'
     | '/auth/callback'
     | '/cookbook/$recipeId'
+    | '/cookbook/tins'
     | '/cookbook/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/shopping'
     | '/auth/callback'
     | '/cookbook/$recipeId'
+    | '/cookbook/tins'
     | '/cookbook'
   id:
     | '__root__'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/shopping'
     | '/auth/callback'
     | '/cookbook/$recipeId'
+    | '/cookbook/tins'
     | '/cookbook/'
   fileRoutesById: FileRoutesById
 }
@@ -188,16 +200,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CookbookRecipeIdRouteImport
       parentRoute: typeof CookbookRoute
     }
+    '/cookbook/tins': {
+      id: '/cookbook/tins'
+      path: '/tins'
+      fullPath: '/cookbook/tins'
+      preLoaderRoute: typeof CookbookTinsRouteImport
+      parentRoute: typeof CookbookRoute
+    }
   }
 }
 
 interface CookbookRouteChildren {
   CookbookRecipeIdRoute: typeof CookbookRecipeIdRoute
+  CookbookTinsRoute: typeof CookbookTinsRoute
   CookbookIndexRoute: typeof CookbookIndexRoute
 }
 
 const CookbookRouteChildren: CookbookRouteChildren = {
   CookbookRecipeIdRoute: CookbookRecipeIdRoute,
+  CookbookTinsRoute: CookbookTinsRoute,
   CookbookIndexRoute: CookbookIndexRoute,
 }
 
