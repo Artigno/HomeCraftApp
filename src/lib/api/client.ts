@@ -7,7 +7,7 @@
  * UI never blocks.
  */
 
-import { clearAuthToken, getAuthToken } from "../auth";
+import { clearAuthToken, getAuthToken, isAuthenticated } from "../auth";
 
 const API_BASE =
   (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.homesync.local/api";
@@ -62,14 +62,23 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-/** Token missing/expired/revoked — clear it and bounce to login, per api-integration-guide.md §3. */
+let unauthorizedHandled = false;
+
+/**
+ * Token missing/expired/revoked, per api-integration-guide.md §3. Clears the
+ * token and asks the already-mounted app to navigate to /login itself
+ * (see __root.tsx's "homesync:unauthorized" listener) instead of doing a
+ * hard `window.location.href` reload — a reload fired while React is still
+ * hydrating the SSR-streamed shell interrupts that hydration and crashes
+ * the page (React error #422 + a router invariant), which is what actually
+ * broke this page: several parallel GETs (syncFromBackend) can all 401 at
+ * once, each racing a reload against React's in-flight hydration.
+ */
 function handleUnauthorized() {
+  if (unauthorizedHandled) return;
+  unauthorizedHandled = true;
   clearAuthToken();
-  if (!isBrowser()) return;
-  const loginPath = `${import.meta.env.BASE_URL}login`;
-  // Avoid a pointless reload loop when this fires while already on /login
-  // (e.g. queued requests from before the user logged in getting flushed).
-  if (!window.location.pathname.endsWith("/login")) window.location.href = loginPath;
+  if (isBrowser()) window.dispatchEvent(new CustomEvent("homesync:unauthorized"));
 }
 
 /** Queue a mutation against the Laravel API and try to flush immediately. */
@@ -176,5 +185,15 @@ if (isBrowser()) {
   // 401 and stay stuck in the queue by design — retry them the moment a
   // token actually shows up, instead of waiting for the next unrelated
   // enqueue() call to happen to trigger a flush.
-  window.addEventListener("homesync:auth", () => void flushQueue());
+  window.addEventListener("homesync:auth", () => {
+    // "homesync:auth" fires on both login AND clearAuthToken (i.e. from
+    // handleUnauthorized() itself) — only reset the guard on an actual
+    // (re)login. Resetting it unconditionally here re-armed it before the
+    // redirect from the first 401 could even happen, so every other request
+    // in the same Promise.all that also 401'd re-triggered the whole clear
+    // + event + reset cycle again, in a tight loop, which is what crashed
+    // the page instead of cleanly redirecting to /login.
+    if (isAuthenticated()) unauthorizedHandled = false;
+    void flushQueue();
+  });
 }

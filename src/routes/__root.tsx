@@ -198,6 +198,14 @@ function RootComponent() {
     }
   }, [pathname, isPublicRoute, router]);
 
+  // client.ts dispatches this on a 401 instead of doing a hard reload, which
+  // would interrupt React's in-flight hydration of the SSR-streamed shell.
+  useEffect(() => {
+    const onUnauthorized = () => void router.navigate({ to: "/login", replace: true });
+    window.addEventListener("homesync:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("homesync:unauthorized", onUnauthorized);
+  }, [router]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <HomeSyncProvider>
