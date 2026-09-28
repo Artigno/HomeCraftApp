@@ -29,6 +29,10 @@ interface StoreValue extends HomeSyncState {
   logTask: (taskId: string) => void;
   addTask: (task: Omit<MaintenanceTask, "id" | "last_done_at">) => void;
   removeTask: (taskId: string) => void;
+  updateTask: (
+    taskId: string,
+    patch: Partial<Omit<MaintenanceTask, "id" | "last_done_at">>,
+  ) => void;
   addShoppingItems: (items: Array<Omit<ShoppingItem, "id" | "created_at" | "done">>) => void;
   toggleShoppingItem: (id: string) => void;
   removeShoppingItem: (id: string) => void;
@@ -178,6 +182,13 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       removeTask: (taskId) => {
         setState((s) => ({ ...s, tasks: s.tasks.filter((t) => t.id !== taskId) }));
         enqueue("DELETE", `/maintenance-tasks/${taskId}`);
+      },
+      updateTask: (taskId, patch) => {
+        setState((s) => ({
+          ...s,
+          tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)),
+        }));
+        enqueue("PATCH", `/maintenance-tasks/${taskId}`, patch);
       },
       addShoppingItems: (items) => {
         haptic();
