@@ -29,10 +29,7 @@ interface StoreValue extends HomeSyncState {
   logTask: (taskId: string) => void;
   addTask: (task: Omit<MaintenanceTask, "id" | "last_done_at">) => void;
   removeTask: (taskId: string) => void;
-  updateTask: (
-    taskId: string,
-    patch: Partial<Omit<MaintenanceTask, "id" | "last_done_at">>,
-  ) => void;
+  updateTask: (taskId: string, patch: Partial<Omit<MaintenanceTask, "id">>) => void;
   addShoppingItems: (items: Array<Omit<ShoppingItem, "id" | "created_at" | "done">>) => void;
   toggleShoppingItem: (id: string) => void;
   removeShoppingItem: (id: string) => void;

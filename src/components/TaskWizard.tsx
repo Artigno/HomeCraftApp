@@ -60,6 +60,7 @@ export function TaskWizard({
   const [frequency, setFrequency] = useState(30);
   const [customFrequency, setCustomFrequency] = useState("");
   const [optionalField, setOptionalField] = useState("Notatka");
+  const [lastDoneDate, setLastDoneDate] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -70,6 +71,7 @@ export function TaskWizard({
       setColor(editingTask.color);
       setFrequency(editingTask.frequency_days);
       setOptionalField(editingTask.note ?? "Notatka");
+      setLastDoneDate(editingTask.last_done_at.slice(0, 10));
     } else {
       setStep(1);
     }
@@ -97,12 +99,18 @@ export function TaskWizard({
   function save() {
     if (!prompt.trim()) return;
     if (isEditing) {
+      // Keep the original time-of-day, only the calendar date is user-editable
+      // here — good enough since status/progress are computed in whole days.
+      const originalTime = editingTask.last_done_at.slice(10);
       updateTask(editingTask.id, {
         name: prompt.trim(),
         icon,
         color,
         frequency_days: frequency,
         note: optionalField,
+        last_done_at: lastDoneDate
+          ? new Date(`${lastDoneDate}${originalTime}`).toISOString()
+          : editingTask.last_done_at,
       });
       toast.success("Zaktualizowano zadanie", { description: `${prompt} · co ${frequency} dni` });
     } else {
@@ -172,13 +180,25 @@ export function TaskWizard({
           ) : (
             <>
               {isEditing ? (
-                <Input
-                  autoFocus
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Nazwa zadania"
-                  className="h-12 rounded-xl text-base"
-                />
+                <>
+                  <Input
+                    autoFocus
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Nazwa zadania"
+                    className="h-12 rounded-xl text-base"
+                  />
+                  <div>
+                    <p className="mb-2 text-sm font-medium">Ostatnio wykonano</p>
+                    <Input
+                      type="date"
+                      value={lastDoneDate}
+                      max={new Date().toISOString().slice(0, 10)}
+                      onChange={(e) => setLastDoneDate(e.target.value)}
+                      className="h-11 rounded-xl"
+                    />
+                  </div>
+                </>
               ) : (
                 <div className="rounded-2xl bg-muted/70 p-3 text-sm">
                   <p className="font-semibold">{prompt}</p>
