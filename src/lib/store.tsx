@@ -48,11 +48,26 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
   const [pendingSync, setPendingSync] = useState(0);
 
   useEffect(() => {
+    let raw: string | null = null;
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) setState(JSON.parse(raw) as HomeSyncState);
     } catch {
       /* corrupt cache -> keep seed */
+    }
+    if (!raw) {
+      // Fresh device: nothing has ever been pushed for this seed data, so the
+      // backend has no matching rows yet. Push it the same way user-created
+      // data is pushed, or later mutations (logTask, toggleShoppingItem, ...)
+      // 422 with "the selected task id is invalid" — POST creates are
+      // idempotent upserts keyed by id (see docs/backend-api-spec.md §2), so
+      // this is safe to run more than once (e.g. React StrictMode).
+      state.tasks.forEach((t) => enqueue("POST", "/maintenance-tasks", t));
+      state.recipes.forEach((r) => enqueue("POST", "/recipes", r));
+      if (state.shopping.length) {
+        enqueue("POST", "/shopping-items/batch", { items: state.shopping });
+      }
+      state.purchases.forEach((p) => enqueue("POST", "/receipts/process", p));
     }
     setHydrated(true);
     setPendingSync(readQueue().length);
