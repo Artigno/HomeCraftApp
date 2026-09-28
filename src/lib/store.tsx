@@ -1,6 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ReactNode } from "react";
-import { enqueue, flushQueue, readQueue } from "./api/client";
+import { apiGet, enqueue, flushQueue, readQueue } from "./api/client";
 import type {
   HomeSyncState,
   MaintenanceTask,
@@ -9,6 +17,7 @@ import type {
   ShoppingItem,
   TaskStatus,
 } from "./api/types";
+import { isAuthenticated } from "./auth";
 import { createSeedState } from "./seed";
 
 const STORAGE_KEY = "homesync.state.v1";
@@ -42,10 +51,46 @@ export function taskStatus(task: MaintenanceTask): TaskStatus {
   return "good";
 }
 
+/** Push the local seed to the backend so a brand-new account has matching rows. */
+function pushSeed(seed: HomeSyncState) {
+  seed.tasks.forEach((t) => enqueue("POST", "/maintenance-tasks", t));
+  seed.recipes.forEach((r) => enqueue("POST", "/recipes", r));
+  if (seed.shopping.length) enqueue("POST", "/shopping-items/batch", { items: seed.shopping });
+  seed.purchases.forEach((p) => enqueue("POST", "/receipts/process", p));
+}
+
 export function HomeSyncProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<HomeSyncState>(() => createSeedState());
   const [hydrated, setHydrated] = useState(false);
   const [pendingSync, setPendingSync] = useState(0);
+  const localSeedRef = useRef<HomeSyncState | null>(null);
+
+  // Pull the canonical lists from the backend so ids/content match the
+  // server (not a locally-generated guess) — without this, every reinstall
+  // re-seeds with fresh random ids that can diverge from what's already
+  // there, and a second device never sees the first device's data at all.
+  const syncFromBackend = useCallback(async () => {
+    if (!isAuthenticated()) return;
+    const [tasks, recipes, shopping, purchases] = await Promise.all([
+      apiGet<MaintenanceTask[] | null>("/maintenance-tasks", null),
+      apiGet<Recipe[] | null>("/recipes", null),
+      apiGet<ShoppingItem[] | null>("/shopping-items", null),
+      apiGet<Purchase[] | null>("/purchases", null),
+    ]);
+    // null means the request failed (offline, 401, ...) — apiGet already
+    // handles those; keep whatever's local and let the queue sync later.
+    if (tasks === null || recipes === null || shopping === null || purchases === null) return;
+
+    const backendHasData = tasks.length + recipes.length + shopping.length + purchases.length > 0;
+    if (!backendHasData) {
+      // Brand-new account with nothing on the backend yet: seed it once,
+      // exactly like a fresh device would, so there's demo content either way.
+      if (localSeedRef.current) pushSeed(localSeedRef.current);
+      return;
+    }
+
+    setState((s) => ({ ...s, tasks, recipes, shopping, purchases, logs: [] }));
+  }, []);
 
   useEffect(() => {
     let raw: string | null = null;
@@ -55,27 +100,23 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
     } catch {
       /* corrupt cache -> keep seed */
     }
-    if (!raw) {
-      // Fresh device: nothing has ever been pushed for this seed data, so the
-      // backend has no matching rows yet. Push it the same way user-created
-      // data is pushed, or later mutations (logTask, toggleShoppingItem, ...)
-      // 422 with "the selected task id is invalid" — POST creates are
-      // idempotent upserts keyed by id (see docs/backend-api-spec.md §2), so
-      // this is safe to run more than once (e.g. React StrictMode).
-      state.tasks.forEach((t) => enqueue("POST", "/maintenance-tasks", t));
-      state.recipes.forEach((r) => enqueue("POST", "/recipes", r));
-      if (state.shopping.length) {
-        enqueue("POST", "/shopping-items/batch", { items: state.shopping });
-      }
-      state.purchases.forEach((p) => enqueue("POST", "/receipts/process", p));
-    }
+    if (!raw) localSeedRef.current = state;
+    void syncFromBackend();
+
     setHydrated(true);
     setPendingSync(readQueue().length);
     void flushQueue();
     const onQueue = (e: Event) => setPendingSync((e as CustomEvent<number>).detail);
     window.addEventListener("homesync:queue", onQueue);
-    return () => window.removeEventListener("homesync:queue", onQueue);
-  }, []);
+    // Mount can happen on /login before a token exists — syncFromBackend()
+    // no-ops then, so re-run it the moment login actually succeeds.
+    const onAuth = () => void syncFromBackend();
+    window.addEventListener("homesync:auth", onAuth);
+    return () => {
+      window.removeEventListener("homesync:queue", onQueue);
+      window.removeEventListener("homesync:auth", onAuth);
+    };
+  }, [syncFromBackend]);
 
   useEffect(() => {
     if (!hydrated) return;
