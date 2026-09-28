@@ -9,16 +9,17 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { LayoutGrid, ChefHat, ShoppingCart, PieChart, LogOut } from "lucide-react";
+import { LayoutGrid, ChefHat, ShoppingCart, PieChart } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
+import { CompleteProfileModal } from "@/components/CompleteProfileModal";
 import { HomeSyncProvider } from "@/lib/store";
-import { clearAuthToken, isAuthenticated } from "@/lib/auth";
+import { isAuthenticated } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
-const PUBLIC_ROUTES = new Set(["/login", "/auth/callback"]);
+const PUBLIC_ROUTES = new Set(["/login", "/join", "/auth/callback"]);
 
 function NotFoundComponent() {
   return (
@@ -143,7 +144,6 @@ const TABS = [
 ] as const;
 
 function TabBar() {
-  const router = useRouter();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-card/85 pb-safe backdrop-blur-xl">
       <div className="mx-auto flex max-w-lg items-stretch">
@@ -159,17 +159,6 @@ function TabBar() {
             {label}
           </Link>
         ))}
-        <button
-          type="button"
-          onClick={() => {
-            clearAuthToken();
-            void router.navigate({ to: "/login", replace: true });
-          }}
-          className="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors active:scale-95"
-        >
-          <LogOut className="size-5" />
-          Wyloguj
-        </button>
       </div>
     </nav>
   );
@@ -217,6 +206,7 @@ function RootComponent() {
         </div>
         {!isPublicRoute && <TabBar />}
         <Toaster position="top-center" />
+        <CompleteProfileModal />
       </HomeSyncProvider>
     </QueryClientProvider>
   );
