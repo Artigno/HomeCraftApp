@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { apiGet, enqueue, flushQueue, readQueue } from "./api/client";
+import { apiGet, apiProfile, enqueue, flushQueue, readQueue } from "./api/client";
 import type {
   HomeSyncState,
   MaintenanceTask,
@@ -18,7 +18,7 @@ import type {
   TaskStatus,
   Tin,
 } from "./api/types";
-import { isAuthenticated } from "./auth";
+import { getProfileComplete, isAuthenticated, setMyName, setProfileComplete } from "./auth";
 import { createSeedState } from "./seed";
 
 const STORAGE_KEY = "homesync.state.v1";
@@ -40,6 +40,9 @@ interface StoreValue extends HomeSyncState {
   addRecipe: (recipe: Omit<Recipe, "id">) => void;
   addTin: (tin: Omit<Tin, "id">) => void;
   removeTin: (id: string) => void;
+  profileGateOpen: boolean;
+  resolveProfileGate: (name: string) => Promise<{ ok: boolean; status: number }>;
+  cancelProfileGate: () => void;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -68,6 +71,33 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [pendingSync, setPendingSync] = useState(0);
   const localSeedRef = useRef<HomeSyncState | null>(null);
+
+  const [profileGate, setProfileGate] = useState<(() => void) | null>(null);
+
+  const gated = useCallback((action: () => void) => {
+    if (getProfileComplete()) {
+      action();
+    } else {
+      setProfileGate(() => action);
+    }
+  }, []);
+
+  const resolveProfileGate = useCallback(
+    async (name: string) => {
+      const res = await apiProfile(name);
+      if (res.ok) {
+        setProfileComplete(true);
+        setMyName(name);
+        const pending = profileGate;
+        setProfileGate(null);
+        pending?.();
+      }
+      return res;
+    },
+    [profileGate],
+  );
+
+  const cancelProfileGate = useCallback(() => setProfileGate(null), []);
 
   // Pull the canonical lists from the backend so ids/content match the
   // server (not a locally-generated guess) — without this, every reinstall
@@ -157,108 +187,133 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       ...state,
       hydrated,
       pendingSync,
-      logTask: (taskId) => {
-        haptic();
-        const loggedAt = new Date().toISOString();
-        setState((s) => ({
-          ...s,
-          tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, last_done_at: loggedAt } : t)),
-          logs: [{ id: crypto.randomUUID(), task_id: taskId, logged_at: loggedAt }, ...s.logs],
-        }));
-        enqueue("POST", "/maintenance-logs", { task_id: taskId, logged_at: loggedAt });
-      },
-      addTask: (task) => {
-        const created: MaintenanceTask = {
-          ...task,
-          id: crypto.randomUUID(),
-          last_done_at: new Date().toISOString(),
-        };
-        setState((s) => ({ ...s, tasks: [created, ...s.tasks] }));
-        enqueue("POST", "/maintenance-tasks", created);
-      },
-      removeTask: (taskId) => {
-        setState((s) => ({ ...s, tasks: s.tasks.filter((t) => t.id !== taskId) }));
-        enqueue("DELETE", `/maintenance-tasks/${taskId}`);
-      },
-      updateTask: (taskId, patch) => {
-        setState((s) => ({
-          ...s,
-          tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)),
-        }));
-        enqueue("PATCH", `/maintenance-tasks/${taskId}`, patch);
-      },
-      addShoppingItems: (items) => {
-        haptic();
-        const created: ShoppingItem[] = items.map((i) => ({
-          ...i,
-          id: crypto.randomUUID(),
-          done: false,
-          created_at: new Date().toISOString(),
-        }));
-        setState((s) => ({ ...s, shopping: [...created, ...s.shopping] }));
-        enqueue("POST", "/shopping-items/batch", { items: created });
-      },
-      toggleShoppingItem: (id) => {
-        haptic();
-        setState((s) => ({
-          ...s,
-          shopping: s.shopping.map((i) => (i.id === id ? { ...i, done: !i.done } : i)),
-        }));
-        enqueue("PATCH", `/shopping-items/${id}/toggle`);
-      },
-      removeShoppingItem: (id) => {
-        setState((s) => ({ ...s, shopping: s.shopping.filter((i) => i.id !== id) }));
-        enqueue("DELETE", `/shopping-items/${id}`);
-      },
-      dismissWarning: (id) => {
-        setState((s) => ({
-          ...s,
-          shopping: s.shopping.map((i) => (i.id === id ? { ...i, warning_dismissed: true } : i)),
-        }));
-        enqueue("PATCH", `/shopping-items/${id}`, { warning_dismissed: true });
-      },
-      completePurchase: ({ store, total, category }) => {
-        haptic(25);
-        setState((s) => {
-          const bought = s.shopping.filter((i) => i.done);
-          const purchase: Purchase = {
-            id: crypto.randomUUID(),
-            store,
-            category,
-            total,
-            purchased_at: new Date().toISOString(),
-            lines: bought.map((i) => ({
-              name: i.name,
-              price: Math.round((total / Math.max(bought.length, 1)) * 100) / 100,
-            })),
-          };
-          enqueue("POST", "/receipts/process", purchase);
-          return {
+      logTask: (taskId) =>
+        gated(() => {
+          haptic();
+          const loggedAt = new Date().toISOString();
+          setState((s) => ({
             ...s,
-            shopping: s.shopping.filter((i) => !i.done),
-            purchases: [purchase, ...s.purchases],
+            tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, last_done_at: loggedAt } : t)),
+            logs: [{ id: crypto.randomUUID(), task_id: taskId, logged_at: loggedAt }, ...s.logs],
+          }));
+          enqueue("POST", "/maintenance-logs", { task_id: taskId, logged_at: loggedAt });
+        }),
+      addTask: (task) =>
+        gated(() => {
+          const created: MaintenanceTask = {
+            ...task,
+            id: crypto.randomUUID(),
+            last_done_at: new Date().toISOString(),
           };
-        });
-      },
+          setState((s) => ({ ...s, tasks: [created, ...s.tasks] }));
+          enqueue("POST", "/maintenance-tasks", created);
+        }),
+      removeTask: (taskId) =>
+        gated(() => {
+          setState((s) => ({ ...s, tasks: s.tasks.filter((t) => t.id !== taskId) }));
+          enqueue("DELETE", `/maintenance-tasks/${taskId}`);
+        }),
+      updateTask: (taskId, patch) =>
+        gated(() => {
+          setState((s) => ({
+            ...s,
+            tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)),
+          }));
+          enqueue("PATCH", `/maintenance-tasks/${taskId}`, patch);
+        }),
+      addShoppingItems: (items) =>
+        gated(() => {
+          haptic();
+          const created: ShoppingItem[] = items.map((i) => ({
+            ...i,
+            id: crypto.randomUUID(),
+            done: false,
+            created_at: new Date().toISOString(),
+          }));
+          setState((s) => ({ ...s, shopping: [...created, ...s.shopping] }));
+          enqueue("POST", "/shopping-items/batch", { items: created });
+        }),
+      toggleShoppingItem: (id) =>
+        gated(() => {
+          haptic();
+          setState((s) => ({
+            ...s,
+            shopping: s.shopping.map((i) => (i.id === id ? { ...i, done: !i.done } : i)),
+          }));
+          enqueue("PATCH", `/shopping-items/${id}/toggle`);
+        }),
+      removeShoppingItem: (id) =>
+        gated(() => {
+          setState((s) => ({ ...s, shopping: s.shopping.filter((i) => i.id !== id) }));
+          enqueue("DELETE", `/shopping-items/${id}`);
+        }),
+      dismissWarning: (id) =>
+        gated(() => {
+          setState((s) => ({
+            ...s,
+            shopping: s.shopping.map((i) => (i.id === id ? { ...i, warning_dismissed: true } : i)),
+          }));
+          enqueue("PATCH", `/shopping-items/${id}`, { warning_dismissed: true });
+        }),
+      completePurchase: ({ store, total, category }) =>
+        gated(() => {
+          haptic(25);
+          setState((s) => {
+            const bought = s.shopping.filter((i) => i.done);
+            const purchase: Purchase = {
+              id: crypto.randomUUID(),
+              store,
+              category,
+              total,
+              purchased_at: new Date().toISOString(),
+              lines: bought.map((i) => ({
+                name: i.name,
+                price: Math.round((total / Math.max(bought.length, 1)) * 100) / 100,
+              })),
+            };
+            enqueue("POST", "/receipts/process", purchase);
+            return {
+              ...s,
+              shopping: s.shopping.filter((i) => !i.done),
+              purchases: [purchase, ...s.purchases],
+            };
+          });
+        }),
       dismissSuggestion: (name) =>
         setState((s) => ({ ...s, dismissed_suggestions: [...s.dismissed_suggestions, name] })),
       daysSincePurchase,
-      addRecipe: (recipe) => {
-        const created: Recipe = { ...recipe, id: crypto.randomUUID() };
-        setState((s) => ({ ...s, recipes: [created, ...s.recipes] }));
-        enqueue("POST", "/recipes", created);
-      },
-      addTin: (tin) => {
-        const created: Tin = { ...tin, id: crypto.randomUUID() };
-        setState((s) => ({ ...s, tins: [created, ...s.tins] }));
-        enqueue("POST", "/tins", created);
-      },
-      removeTin: (id) => {
-        setState((s) => ({ ...s, tins: s.tins.filter((t) => t.id !== id) }));
-        enqueue("DELETE", `/tins/${id}`);
-      },
+      addRecipe: (recipe) =>
+        gated(() => {
+          const created: Recipe = { ...recipe, id: crypto.randomUUID() };
+          setState((s) => ({ ...s, recipes: [created, ...s.recipes] }));
+          enqueue("POST", "/recipes", created);
+        }),
+      addTin: (tin) =>
+        gated(() => {
+          const created: Tin = { ...tin, id: crypto.randomUUID() };
+          setState((s) => ({ ...s, tins: [created, ...s.tins] }));
+          enqueue("POST", "/tins", created);
+        }),
+      removeTin: (id) =>
+        gated(() => {
+          setState((s) => ({ ...s, tins: s.tins.filter((t) => t.id !== id) }));
+          enqueue("DELETE", `/tins/${id}`);
+        }),
+      profileGateOpen: profileGate !== null,
+      resolveProfileGate,
+      cancelProfileGate,
     }),
-    [state, hydrated, pendingSync, haptic, daysSincePurchase],
+    [
+      state,
+      hydrated,
+      pendingSync,
+      haptic,
+      daysSincePurchase,
+      profileGate,
+      gated,
+      resolveProfileGate,
+      cancelProfileGate,
+    ],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
