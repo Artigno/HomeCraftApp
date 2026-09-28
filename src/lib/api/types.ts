@@ -73,6 +73,35 @@ export interface Purchase {
   lines: PurchaseLine[];
 }
 
+export interface HouseholdMember {
+  id: number;
+  name: string | null;
+  is_owner: boolean;
+}
+
+export interface Household {
+  id: string;
+  members: HouseholdMember[];
+  share_code: string | null;
+}
+
+export interface ActivityLogEntry {
+  id: string;
+  actor_name: string;
+  action: "created" | "updated" | "deleted";
+  subject_type: string;
+  subject_label: string;
+  created_at: string;
+}
+
+export interface ActivityPage {
+  data: ActivityLogEntry[];
+  meta: {
+    current_page: number;
+    last_page: number;
+  };
+}
+
 export type AccentColor = "green" | "amber" | "red" | "blue" | "violet" | "teal";
 
 export type TaskStatus = "good" | "warning" | "overdue";
