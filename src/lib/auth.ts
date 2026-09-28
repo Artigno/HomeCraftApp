@@ -3,6 +3,7 @@
 const TOKEN_KEY = "homesync.auth-token";
 const PROFILE_COMPLETE_KEY = "homesync.profile-complete";
 const MY_NAME_KEY = "homesync.my-name";
+const IS_OWNER_KEY = "homesync.is-owner";
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -24,6 +25,7 @@ export function clearAuthToken() {
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(PROFILE_COMPLETE_KEY);
   window.localStorage.removeItem(MY_NAME_KEY);
+  window.localStorage.removeItem(IS_OWNER_KEY);
   window.dispatchEvent(new CustomEvent("homesync:auth"));
 }
 
@@ -59,6 +61,28 @@ export function getMyName(): string | null {
 export function setMyName(name: string) {
   if (!isBrowser()) return;
   window.localStorage.setItem(MY_NAME_KEY, name);
+}
+
+/**
+ * Whether this account owns its household. Defaults to `true` — register,
+ * SSO, and every pre-existing account always own their household (per the
+ * backend's design: registration/SSO always creates a new owned household,
+ * and the migration backfill made every existing user the owner of their
+ * own solo household). Only `/join` ever sets this `false`, since joining
+ * via share code is the sole way to become a non-owner member. The backend
+ * has no "who am I" endpoint to double-check this against post-login, so
+ * this is a client-side inference, not a fetched fact — see the account
+ * screen's use of it, which still treats a 403 on regenerate as the
+ * authoritative correction if this ever drifts.
+ */
+export function getIsOwner(): boolean {
+  if (!isBrowser()) return true;
+  return window.localStorage.getItem(IS_OWNER_KEY) !== "false";
+}
+
+export function setIsOwner(isOwner: boolean) {
+  if (!isBrowser()) return;
+  window.localStorage.setItem(IS_OWNER_KEY, isOwner ? "true" : "false");
 }
 
 /** Full-page nav into the backend's server-side OAuth redirect — not a client SDK. */

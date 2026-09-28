@@ -5,8 +5,8 @@ import { Copy, LogOut, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiGet, apiProfile, apiRegenerateShareCode } from "@/lib/api/client";
-import { clearAuthToken, getMyName } from "@/lib/auth";
+import { apiGet, apiProfile, apiRegenerateShareCode, flushQueue } from "@/lib/api/client";
+import { clearAuthToken, getIsOwner, getMyName, setMyName, setProfileComplete } from "@/lib/auth";
 import type { ActivityPage, Household } from "@/lib/api/types";
 
 export const Route = createFileRoute("/account")({
@@ -27,6 +27,7 @@ function AccountPage() {
   const [name, setName] = useState(() => getMyName() ?? "");
   const [savingName, setSavingName] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [canRegenerate, setCanRegenerate] = useState(() => getIsOwner());
 
   useEffect(() => {
     void apiGet<Household | null>("/household", null).then(setHousehold);
@@ -41,6 +42,9 @@ function AccountPage() {
     try {
       const res = await apiProfile(trimmed);
       if (res.ok) {
+        setProfileComplete(true);
+        setMyName(trimmed);
+        void flushQueue();
         toast.success("Zapisano imię.");
       } else {
         toast.error("Nie udało się zapisać imienia.");
@@ -59,6 +63,7 @@ function AccountPage() {
       if (res.ok) {
         setHousehold((h) => (h ? { ...h, share_code: res.share_code } : h));
       } else if (res.status === 403) {
+        setCanRegenerate(false);
         toast.error("Tylko właściciel domu może wygenerować kod.");
       } else {
         toast.error("Nie udało się wygenerować kodu.");
@@ -67,6 +72,18 @@ function AccountPage() {
       toast.error("Brak połączenia z serwerem.");
     } finally {
       setRegenerating(false);
+    }
+  }
+
+  async function onCopyCode() {
+    const code = household?.share_code;
+    if (!code) return;
+    try {
+      if (!navigator.clipboard) throw new Error("clipboard unavailable");
+      await navigator.clipboard.writeText(code);
+      toast.success("Skopiowano kod.");
+    } catch {
+      toast.error("Nie udało się skopiować kodu.");
     }
   }
 
@@ -133,7 +150,7 @@ function AccountPage() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={() => void navigator.clipboard.writeText(household.share_code ?? "")}
+                onClick={() => void onCopyCode()}
                 aria-label="Kopiuj kod"
               >
                 <Copy className="size-4" />
@@ -141,7 +158,7 @@ function AccountPage() {
             </div>
           )}
 
-          {household && (household.share_code !== null || household.members.length > 0) && (
+          {household && canRegenerate && (
             <Button
               type="button"
               variant="secondary"

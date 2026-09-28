@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiAuth } from "@/lib/api/client";
-import { setAuthToken, setProfileComplete } from "@/lib/auth";
+import { setAuthToken, setIsOwner, setProfileComplete } from "@/lib/auth";
 
 export const Route = createFileRoute("/join")({
   head: () => ({ meta: [{ title: "Dołącz do domu — HomeSync" }] }),
@@ -30,6 +30,7 @@ function JoinPage() {
       if (res.ok) {
         setAuthToken(res.data.token);
         setProfileComplete(false);
+        setIsOwner(false);
         void navigate({ to: "/", replace: true });
         return;
       }
