@@ -1,7 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { CircleDashed, Plus, Ruler, Square, Trash2 } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { ChevronLeft, CircleDashed, Plus, Ruler, Square, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,15 +35,23 @@ function TinsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Moje blaszki"
-        subtitle={tins.length ? `${tins.length} w Twojej kuchni` : "Dodaj swoją pierwszą blaszkę"}
-        action={
-          <Button size="icon" className="size-10 rounded-full" onClick={() => setOpen(true)}>
-            <Plus className="size-5" />
-          </Button>
-        }
-      />
+      <div className="sticky top-0 z-30 flex items-center gap-2 bg-background/85 px-2 pt-safe pb-2 backdrop-blur-xl">
+        <Link
+          to="/cookbook"
+          className="flex size-10 items-center justify-center rounded-full text-foreground active:scale-90"
+        >
+          <ChevronLeft className="size-6" />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">Moje blaszki</p>
+          <p className="text-xs text-muted-foreground">
+            {tins.length ? `${tins.length} w Twojej kuchni` : "Dodaj swoją pierwszą blaszkę"}
+          </p>
+        </div>
+        <Button size="icon" className="size-10 shrink-0 rounded-full" onClick={() => setOpen(true)}>
+          <Plus className="size-5" />
+        </Button>
+      </div>
 
       {tins.length === 0 ? (
         <div className="px-4 pt-8 text-center text-sm text-muted-foreground">
