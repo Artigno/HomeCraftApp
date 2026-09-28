@@ -45,11 +45,16 @@ export function TaskWizard({
   open,
   onOpenChange,
   editingTask,
+  editMode = "details",
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   /** When set, the drawer opens straight into the edit screen for this task. */
   editingTask?: MaintenanceTask | null;
+  /** "date" shows only the last-done date picker — a smaller sheet for the
+   * common "forgot to tap yesterday" fix, split out so the full edit sheet
+   * (name/frequency/icon) stays short enough to fit on screen. */
+  editMode?: "details" | "date";
 }) {
   const { addTask, updateTask } = useHomeSync();
   const isEditing = !!editingTask;
@@ -96,21 +101,31 @@ export function TaskWizard({
     setCustomFrequency("");
   }
 
+  function saveDate() {
+    if (!editingTask) return;
+    // Keep the original time-of-day, only the calendar date is user-editable
+    // here — good enough since status/progress are computed in whole days.
+    const originalTime = editingTask.last_done_at.slice(10);
+    updateTask(editingTask.id, {
+      last_done_at: lastDoneDate
+        ? new Date(`${lastDoneDate}${originalTime}`).toISOString()
+        : editingTask.last_done_at,
+    });
+    toast.success("Zaktualizowano datę wykonania", { description: editingTask.name });
+    onOpenChange(false);
+    reset();
+  }
+
   function save() {
+    if (isEditing && editMode === "date") return saveDate();
     if (!prompt.trim()) return;
     if (isEditing) {
-      // Keep the original time-of-day, only the calendar date is user-editable
-      // here — good enough since status/progress are computed in whole days.
-      const originalTime = editingTask.last_done_at.slice(10);
       updateTask(editingTask.id, {
         name: prompt.trim(),
         icon,
         color,
         frequency_days: frequency,
         note: optionalField,
-        last_done_at: lastDoneDate
-          ? new Date(`${lastDoneDate}${originalTime}`).toISOString()
-          : editingTask.last_done_at,
       });
       toast.success("Zaktualizowano zadanie", { description: `${prompt} · co ${frequency} dni` });
     } else {
@@ -120,6 +135,8 @@ export function TaskWizard({
     onOpenChange(false);
     reset();
   }
+
+  const isDateOnly = isEditing && editMode === "date";
 
   return (
     <Drawer
@@ -133,23 +150,41 @@ export function TaskWizard({
         <DrawerHeader className="text-left">
           <DrawerTitle className="flex items-center gap-2 text-xl">
             <Wand2 className="size-5 text-[var(--accent-violet)]" />
-            {isEditing
-              ? "Edytuj zadanie"
-              : step === 1
-                ? "Co chcesz śledzić?"
-                : "Propozycja konfiguracji"}
+            {isDateOnly
+              ? "Popraw datę wykonania"
+              : isEditing
+                ? "Edytuj zadanie"
+                : step === 1
+                  ? "Co chcesz śledzić?"
+                  : "Propozycja konfiguracji"}
           </DrawerTitle>
           <DrawerDescription>
-            {isEditing
-              ? "Popraw nazwę, częstotliwość albo wygląd kafelka."
-              : step === 1
-                ? "Jedno zdanie wystarczy — resztę ustawimy automatycznie."
-                : "Sprawdź, popraw jednym tapnięciem i zapisz."}
+            {isDateOnly
+              ? editingTask?.name
+              : isEditing
+                ? "Popraw nazwę, częstotliwość albo wygląd kafelka."
+                : step === 1
+                  ? "Jedno zdanie wystarczy — resztę ustawimy automatycznie."
+                  : "Sprawdź, popraw jednym tapnięciem i zapisz."}
           </DrawerDescription>
         </DrawerHeader>
 
         <div className="space-y-4 px-4 pb-6">
-          {step === 1 ? (
+          {isDateOnly ? (
+            <>
+              <Input
+                autoFocus
+                type="date"
+                value={lastDoneDate}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setLastDoneDate(e.target.value)}
+                className="h-12 rounded-xl text-base"
+              />
+              <Button className="h-12 w-full rounded-xl text-base" onClick={save}>
+                Zapisz datę
+              </Button>
+            </>
+          ) : step === 1 ? (
             <>
               <Input
                 autoFocus
@@ -180,25 +215,13 @@ export function TaskWizard({
           ) : (
             <>
               {isEditing ? (
-                <>
-                  <Input
-                    autoFocus
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Nazwa zadania"
-                    className="h-12 rounded-xl text-base"
-                  />
-                  <div>
-                    <p className="mb-2 text-sm font-medium">Ostatnio wykonano</p>
-                    <Input
-                      type="date"
-                      value={lastDoneDate}
-                      max={new Date().toISOString().slice(0, 10)}
-                      onChange={(e) => setLastDoneDate(e.target.value)}
-                      className="h-11 rounded-xl"
-                    />
-                  </div>
-                </>
+                <Input
+                  autoFocus
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Nazwa zadania"
+                  className="h-12 rounded-xl text-base"
+                />
               ) : (
                 <div className="rounded-2xl bg-muted/70 p-3 text-sm">
                   <p className="font-semibold">{prompt}</p>

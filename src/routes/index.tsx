@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Check, Pencil, Plus, Trash2 } from "lucide-react";
+import { Calendar, Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { TaskWizard } from "@/components/TaskWizard";
@@ -36,6 +36,7 @@ function Dashboard() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingTask, setEditingTask] = useState<MaintenanceTask | null>(null);
+  const [dateEditingTask, setDateEditingTask] = useState<MaintenanceTask | null>(null);
   const [actionsTask, setActionsTask] = useState<MaintenanceTask | null>(null);
 
   const sorted = useMemo(
@@ -101,12 +102,16 @@ function Dashboard() {
       </p>
 
       <TaskWizard
-        open={wizardOpen || !!editingTask}
+        open={wizardOpen || !!editingTask || !!dateEditingTask}
         onOpenChange={(o) => {
           setWizardOpen(o);
-          if (!o) setEditingTask(null);
+          if (!o) {
+            setEditingTask(null);
+            setDateEditingTask(null);
+          }
         }}
-        editingTask={editingTask}
+        editingTask={editingTask ?? dateEditingTask}
+        editMode={dateEditingTask ? "date" : "details"}
       />
 
       {actionsTask && (
@@ -131,6 +136,16 @@ function Dashboard() {
               className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] active:bg-muted"
             >
               <Pencil className="size-5" /> Edytuj
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDateEditingTask(actionsTask);
+                setActionsTask(null);
+              }}
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] active:bg-muted"
+            >
+              <Calendar className="size-5" /> Edytuj datę wykonania
             </button>
             <button
               type="button"
