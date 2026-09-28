@@ -230,6 +230,38 @@ export async function apiRegenerateShareCode(): Promise<
   return { ok: true, share_code: data.share_code };
 }
 
+/** POST /household/pending-members/{id}/approve — synchronous, owner-only. */
+export async function apiApprovePendingMember(
+  id: number,
+): Promise<{ ok: boolean; status: number }> {
+  const res = await fetch(`${API_BASE}/household/pending-members/${id}/approve`, {
+    method: "POST",
+    headers: { Accept: "application/json", ...authHeaders() },
+    signal: AbortSignal.timeout(10_000),
+  });
+  return { ok: res.ok, status: res.status };
+}
+
+/** POST /household/pending-members/{id}/reject — synchronous, owner-only, deletes the account. */
+export async function apiRejectPendingMember(id: number): Promise<{ ok: boolean; status: number }> {
+  const res = await fetch(`${API_BASE}/household/pending-members/${id}/reject`, {
+    method: "POST",
+    headers: { Accept: "application/json", ...authHeaders() },
+    signal: AbortSignal.timeout(10_000),
+  });
+  return { ok: res.ok, status: res.status };
+}
+
+/** DELETE /household/members/{id} — synchronous, owner-only, keeps the member's data. */
+export async function apiRemoveMember(id: number): Promise<{ ok: boolean; status: number }> {
+  const res = await fetch(`${API_BASE}/household/members/${id}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json", ...authHeaders() },
+    signal: AbortSignal.timeout(10_000),
+  });
+  return { ok: res.ok, status: res.status };
+}
+
 export { API_BASE };
 
 if (isBrowser()) {

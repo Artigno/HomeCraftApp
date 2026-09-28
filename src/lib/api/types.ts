@@ -89,6 +89,12 @@ export interface JoinStatus {
   approved: boolean;
 }
 
+export interface PendingMember {
+  id: number;
+  name: string;
+  requested_at: string;
+}
+
 export interface ActivityLogEntry {
   id: string;
   actor_name: string;
