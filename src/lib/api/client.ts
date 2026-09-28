@@ -65,7 +65,11 @@ function authHeaders(): Record<string, string> {
 /** Token missing/expired/revoked — clear it and bounce to login, per api-integration-guide.md §3. */
 function handleUnauthorized() {
   clearAuthToken();
-  if (isBrowser()) window.location.href = `${import.meta.env.BASE_URL}login`;
+  if (!isBrowser()) return;
+  const loginPath = `${import.meta.env.BASE_URL}login`;
+  // Avoid a pointless reload loop when this fires while already on /login
+  // (e.g. queued requests from before the user logged in getting flushed).
+  if (!window.location.pathname.endsWith("/login")) window.location.href = loginPath;
 }
 
 /** Queue a mutation against the Laravel API and try to flush immediately. */
@@ -167,4 +171,10 @@ export { API_BASE };
 
 if (isBrowser()) {
   window.addEventListener("online", () => void flushQueue());
+  // Requests queued while logged out (e.g. the seed-data creates pushed on
+  // first hydration, which happens on /login too, before a token exists)
+  // 401 and stay stuck in the queue by design — retry them the moment a
+  // token actually shows up, instead of waiting for the next unrelated
+  // enqueue() call to happen to trigger a flush.
+  window.addEventListener("homesync:auth", () => void flushQueue());
 }
