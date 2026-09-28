@@ -11,7 +11,7 @@ export function createSeedState(): HomeSyncState {
   return {
     tasks: [
       {
-        id: "t1",
+        id: "9cfd8056-2185-4516-846c-8bcaf8a8304b",
         name: "Odkamienianie ekspresu",
         icon: "Coffee",
         color: "amber",
@@ -19,7 +19,7 @@ export function createSeedState(): HomeSyncState {
         last_done_at: daysAgo(12),
       },
       {
-        id: "t2",
+        id: "8ecf6c42-2c4b-4b52-a78f-637cf864e526",
         name: "Filtr wentylacji",
         icon: "Fan",
         color: "blue",
@@ -27,7 +27,7 @@ export function createSeedState(): HomeSyncState {
         last_done_at: daysAgo(96),
       },
       {
-        id: "t3",
+        id: "ae7f7bd9-8972-4f5e-9266-b2ec4468b863",
         name: "Klatka królika",
         icon: "Rabbit",
         color: "violet",
@@ -35,7 +35,7 @@ export function createSeedState(): HomeSyncState {
         last_done_at: daysAgo(1),
       },
       {
-        id: "t4",
+        id: "e5b99d42-e21e-44c5-9e82-9f39b9f7f39a",
         name: "Podlewanie roślin",
         icon: "Sprout",
         color: "green",
@@ -43,7 +43,7 @@ export function createSeedState(): HomeSyncState {
         last_done_at: daysAgo(2),
       },
       {
-        id: "t5",
+        id: "187d9620-c589-4f3e-a7f0-9f009bfc6220",
         name: "Pranie pościeli",
         icon: "BedDouble",
         color: "teal",
@@ -51,7 +51,7 @@ export function createSeedState(): HomeSyncState {
         last_done_at: daysAgo(9),
       },
       {
-        id: "t6",
+        id: "12900263-0cff-4c70-8413-1a590d703e96",
         name: "Przegląd auta",
         icon: "Car",
         color: "red",
@@ -62,7 +62,7 @@ export function createSeedState(): HomeSyncState {
     logs: [],
     recipes: [
       {
-        id: "r1",
+        id: "a7fb019f-d869-49a8-bc19-8b94d00860fd",
         title: "Naleśniki",
         emoji: "🥞",
         tags: ["Szybka kolacja", "Słodkie"],
@@ -82,7 +82,7 @@ export function createSeedState(): HomeSyncState {
         ],
       },
       {
-        id: "r2",
+        id: "2acbcef5-7bb1-47de-80d9-4d36b839cac3",
         title: "Makaron carbonara",
         emoji: "🍝",
         tags: ["Szybka kolacja", "Obiad"],
@@ -102,7 +102,7 @@ export function createSeedState(): HomeSyncState {
         ],
       },
       {
-        id: "r3",
+        id: "827fa84f-47d7-4c4f-afeb-7a905ddfc8c1",
         title: "Zupa pomidorowa",
         emoji: "🍲",
         tags: ["Obiad", "Comfort food"],
@@ -117,7 +117,7 @@ export function createSeedState(): HomeSyncState {
         steps: ["Zagotuj bulion z passatą.", "Dopraw i zabiel śmietaną.", "Podaj z ryżem."],
       },
       {
-        id: "r4",
+        id: "71c904c0-fb02-4615-ad87-cff21b064bd1",
         title: "Sałatka grecka",
         emoji: "🥗",
         tags: ["Lekkie", "Bez gotowania"],
@@ -134,14 +134,14 @@ export function createSeedState(): HomeSyncState {
     ],
     shopping: [
       {
-        id: "s1",
+        id: "93c354f7-5735-446c-b87d-d85c5238cd74",
         name: "Chleb",
         done: false,
         warning_dismissed: false,
         created_at: daysAgo(0),
       },
       {
-        id: "s2",
+        id: "842ad2d4-394b-43d7-9a3a-2fe507228627",
         name: "Kawa ziarnista",
         amount: "1 kg",
         done: false,
@@ -151,7 +151,7 @@ export function createSeedState(): HomeSyncState {
     ],
     purchases: [
       {
-        id: "p1",
+        id: "07b4381d-9ab4-4d9c-a1d1-5a06375d987f",
         store: "Biedronka",
         category: "Spożywcze",
         total: 184.32,
@@ -163,7 +163,7 @@ export function createSeedState(): HomeSyncState {
         ],
       },
       {
-        id: "p2",
+        id: "cabff620-dcad-4379-9321-86739763d2a7",
         store: "Lidl",
         category: "Spożywcze",
         total: 232.1,
@@ -174,7 +174,7 @@ export function createSeedState(): HomeSyncState {
         ],
       },
       {
-        id: "p3",
+        id: "59197585-609e-4bc3-85ad-66a3a20996b0",
         store: "Rossmann",
         category: "Chemia",
         total: 96.4,
@@ -182,7 +182,7 @@ export function createSeedState(): HomeSyncState {
         lines: [{ name: "Proszek do prania", price: 39.9 }],
       },
       {
-        id: "p4",
+        id: "a38aff9f-e83f-44c9-84ba-e3ce5abfe80a",
         store: "Auchan",
         category: "Dom",
         total: 341.0,
@@ -190,7 +190,7 @@ export function createSeedState(): HomeSyncState {
         lines: [{ name: "Filtr HVAC", price: 89.0 }],
       },
       {
-        id: "p5",
+        id: "41949a0c-62ef-4d83-b078-4cc8375aa3ab",
         store: "Biedronka",
         category: "Spożywcze",
         total: 210.55,
@@ -198,7 +198,7 @@ export function createSeedState(): HomeSyncState {
         lines: [{ name: "Spaghetti", price: 5.49 }],
       },
       {
-        id: "p6",
+        id: "0b10d75f-bdc2-41a8-be9e-b8ee50cfb9f9",
         store: "Lidl",
         category: "Spożywcze",
         total: 175.2,
