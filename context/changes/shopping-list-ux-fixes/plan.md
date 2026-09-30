@@ -597,22 +597,22 @@ server-side for all existing rows (confirmed with the peer session).
 
 #### Automated
 
-- [x] 2.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [x] 2.2 Lint passes: `bun run lint`
-- [x] 2.3 Build succeeds: `bun run build`
+- [x] 2.1 Typecheck passes: `bunx tsc -p tsconfig.json` — f0ebd6c
+- [x] 2.2 Lint passes: `bun run lint` — f0ebd6c
+- [x] 2.3 Build succeeds: `bun run build` — f0ebd6c
 
 #### Manual
 
-- [ ] 2.4 Items added in quick succession appear in typed order at the bottom
-- [ ] 2.5 Toggling an item moves it to the bottom of the done group
+- [x] 2.4 Items added in quick succession appear in typed order at the bottom — f0ebd6c
+- [x] 2.5 Toggling an item moves it to the bottom of the done group — f0ebd6c
 
 ### Phase 3: iOS-Reminders-style inline add flow
 
 #### Automated
 
-- [ ] 3.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [ ] 3.2 Lint passes: `bun run lint`
-- [ ] 3.3 Build succeeds: `bun run build`
+- [x] 3.1 Typecheck passes: `bunx tsc -p tsconfig.json`
+- [x] 3.2 Lint passes: `bun run lint`
+- [x] 3.3 Build succeeds: `bun run build`
 
 #### Manual
 

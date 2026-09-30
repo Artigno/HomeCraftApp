@@ -32,7 +32,6 @@ function ShoppingList() {
     daysSincePurchase,
     dismissSuggestion,
   } = useHomeSync();
-  const [name, setName] = useState("");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const sorted = useMemo(
@@ -59,11 +58,6 @@ function ShoppingList() {
         ...(recentDays !== undefined ? { recent_purchase_days: recentDays } : {}),
       },
     ]);
-  }
-
-  function handleQuickAdd() {
-    addByName(name);
-    setName("");
   }
 
   return (
@@ -96,14 +90,15 @@ function ShoppingList() {
         </div>
       )}
 
-      <ul className={cn("space-y-2 px-4 pt-3", shopping.length > 0 ? "pb-3" : "pb-28")}>
+      <ul className="space-y-2 px-4 pb-3 pt-3">
         {sorted.map((item) => (
           <ShoppingListRow key={item.id} item={item} />
         ))}
+        <AddItemRow onAdd={addByName} />
       </ul>
 
       {shopping.length > 0 && (
-        <div className="px-4 pb-28">
+        <div className="px-4 pb-3">
           <Button
             className="h-12 w-full rounded-xl text-base"
             disabled={!shopping.some((i) => i.done)}
@@ -119,22 +114,55 @@ function ShoppingList() {
         onOpenChange={setCheckoutOpen}
         boughtItems={shopping.filter((i) => i.done)}
       />
-
-      <div className="fixed inset-x-0 bottom-16 z-30 mx-auto flex max-w-lg items-center gap-2 border-t border-border/70 bg-card/90 px-4 py-3 backdrop-blur-xl">
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleQuickAdd();
-          }}
-          placeholder="Dodaj produkt..."
-          className="h-11 flex-1 rounded-xl"
-        />
-        <Button size="icon" className="size-11 shrink-0 rounded-xl" onClick={handleQuickAdd}>
-          <Plus className="size-5" />
-        </Button>
-      </div>
     </div>
+  );
+}
+
+function AddItemRow({ onAdd }: { onAdd: (name: string) => void }) {
+  const [active, setActive] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  function commit() {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    onAdd(trimmed);
+    setDraft("");
+  }
+
+  if (!active) {
+    return (
+      <li>
+        <button
+          type="button"
+          onClick={() => setActive(true)}
+          className="flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-border px-4 py-3 text-left text-muted-foreground transition-transform active:scale-[0.98]"
+        >
+          <Plus className="size-5" />
+          <span className="text-[15px] font-medium">Dodaj produkt</span>
+        </button>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <Input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          }
+        }}
+        onBlur={() => {
+          if (!draft.trim()) setActive(false);
+        }}
+        placeholder="Nazwa produktu"
+        className="h-[52px] rounded-2xl px-4 text-[15px]"
+      />
+    </li>
   );
 }
 
