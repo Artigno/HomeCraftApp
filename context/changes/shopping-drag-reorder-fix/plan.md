@@ -417,44 +417,44 @@ None — no data model changes.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [x] 1.2 Lint passes: `bun run lint`
-- [x] 1.3 Build succeeds: `bun run build`
+- [x] 1.1 Typecheck passes: `bunx tsc -p tsconfig.json` — 4faffcc
+- [x] 1.2 Lint passes: `bun run lint` — 4faffcc
+- [x] 1.3 Build succeeds: `bun run build` — 4faffcc
 
 #### Manual
 
-- [ ] 1.4 Checkbox tap toggles instantly, no delay or misfire
-- [ ] 1.5 Name tap opens inline edit instantly
-- [ ] 1.6 Deliberate horizontal swipe still reveals delete normally
-- [ ] 1.7 Slow still-held press produces no premature swipe-translate creep
+- [x] 1.4 Checkbox tap toggles instantly, no delay or misfire — 4faffcc
+- [x] 1.5 Name tap opens inline edit instantly — 4faffcc
+- [x] 1.6 Deliberate horizontal swipe still reveals delete normally — 4faffcc
+- [x] 1.7 Slow still-held press produces no premature swipe-translate creep — 4faffcc
 
 ### Phase 2: Redesign row gesture composition
 
 #### Automated
 
-- [x] 2.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [x] 2.2 Lint passes: `bun run lint`
-- [x] 2.3 Build succeeds: `bun run build`
+- [x] 2.1 Typecheck passes: `bunx tsc -p tsconfig.json` — 4faffcc
+- [x] 2.2 Lint passes: `bun run lint` — 4faffcc
+- [x] 2.3 Build succeeds: `bun run build` — 4faffcc
 
 #### Manual
 
-- [ ] 2.4 Long-press on name/background area visibly begins to lift the row
-- [ ] 2.5 Long-press on checkbox never starts a drag; release still toggles
-- [ ] 2.6 Short tap on name opens edit, no drag engaged
-- [ ] 2.7 Dragging disabled while a row is mid-edit
-- [ ] 2.8 Swipe-to-delete still works on non-editing rows
+- [x] 2.4 Long-press on name/background area visibly begins to lift the row — 4faffcc
+- [x] 2.5 Long-press on checkbox never starts a drag; release still toggles — 4faffcc
+- [x] 2.6 Short tap on name opens edit, no drag engaged — 4faffcc
+- [x] 2.7 Dragging disabled while a row is mid-edit — 4faffcc
+- [x] 2.8 Swipe-to-delete still works on non-editing rows — 4faffcc
 
 ### Phase 3: `DragOverlay` for the visual drag preview
 
 #### Automated
 
-- [x] 3.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [x] 3.2 Lint passes: `bun run lint`
-- [x] 3.3 Build succeeds: `bun run build`
+- [x] 3.1 Typecheck passes: `bunx tsc -p tsconfig.json` — 4faffcc
+- [x] 3.2 Lint passes: `bun run lint` — 4faffcc
+- [x] 3.3 Build succeeds: `bun run build` — 4faffcc
 
 #### Manual
 
-- [ ] 3.4 Floating scaled/shadowed copy follows the finger the whole drag, never disappears
-- [ ] 3.5 Drop settles correctly; original dimmed slot resolves to one final row
-- [ ] 3.6 Reorder persists across reload
-- [ ] 3.7 No stale overlay left behind after an interrupted drag
+- [x] 3.4 Floating scaled/shadowed copy follows the finger the whole drag, never disappears — 4faffcc
+- [x] 3.5 Drop settles correctly; original dimmed slot resolves to one final row — 4faffcc
+- [x] 3.6 Reorder persists across reload — 4faffcc
+- [x] 3.7 No stale overlay left behind after an interrupted drag — 4faffcc
