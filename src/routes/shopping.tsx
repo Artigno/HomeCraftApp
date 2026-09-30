@@ -36,7 +36,8 @@ function ShoppingList() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const sorted = useMemo(
-    () => [...shopping].sort((a, b) => Number(a.done) - Number(b.done)),
+    () =>
+      [...shopping].sort((a, b) => Number(a.done) - Number(b.done) || a.sort_order - b.sort_order),
     [shopping],
   );
 

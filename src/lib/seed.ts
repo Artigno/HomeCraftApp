@@ -139,6 +139,7 @@ export function createSeedState(): HomeSyncState {
         done: false,
         warning_dismissed: false,
         created_at: daysAgo(0),
+        sort_order: 0,
       },
       {
         id: "842ad2d4-394b-43d7-9a3a-2fe507228627",
@@ -147,6 +148,7 @@ export function createSeedState(): HomeSyncState {
         done: false,
         warning_dismissed: false,
         created_at: daysAgo(1),
+        sort_order: 1,
       },
     ],
     purchases: [

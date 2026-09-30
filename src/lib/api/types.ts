@@ -57,6 +57,7 @@ export interface ShoppingItem {
   recent_purchase_days?: number;
   warning_dismissed: boolean;
   created_at: string;
+  sort_order: number;
 }
 
 export interface PurchaseLine {
