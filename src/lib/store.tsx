@@ -36,6 +36,10 @@ interface StoreValue extends HomeSyncState {
   toggleShoppingItem: (id: string) => void;
   removeShoppingItem: (id: string) => void;
   dismissWarning: (id: string) => void;
+  updateShoppingItem: (
+    id: string,
+    patch: Partial<Pick<ShoppingItem, "name" | "sort_order">>,
+  ) => void;
   completePurchase: (data: { store: string; total: number; category: string }) => void;
   dismissSuggestion: (name: string) => void;
   daysSincePurchase: (name: string) => number | undefined;
@@ -222,6 +226,13 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
           shopping: s.shopping.map((i) => (i.id === id ? { ...i, warning_dismissed: true } : i)),
         }));
         enqueue("PATCH", `/shopping-items/${id}`, { warning_dismissed: true });
+      },
+      updateShoppingItem: (id, patch) => {
+        setState((s) => ({
+          ...s,
+          shopping: s.shopping.map((i) => (i.id === id ? { ...i, ...patch } : i)),
+        }));
+        enqueue("PATCH", `/shopping-items/${id}`, patch);
       },
       completePurchase: ({ store, total, category }) => {
         haptic(25);

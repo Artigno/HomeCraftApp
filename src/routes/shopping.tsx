@@ -167,23 +167,42 @@ function AddItemRow({ onAdd }: { onAdd: (name: string) => void }) {
 }
 
 function ShoppingListRow({ item }: { item: ShoppingItem }) {
-  const { toggleShoppingItem, removeShoppingItem, dismissWarning } = useHomeSync();
+  const { toggleShoppingItem, removeShoppingItem, dismissWarning, updateShoppingItem } =
+    useHomeSync();
   const { bind, style, isRevealed, reset, consumeDragFlag } = useSwipeToDelete({
     onDelete: () => removeShoppingItem(item.id),
   });
+  const [editing, setEditing] = useState(false);
+  const [draftName, setDraftName] = useState(item.name);
 
   const showWarning =
     item.recent_purchase_days !== undefined &&
     item.recent_purchase_days <= 7 &&
     !item.warning_dismissed;
 
-  function handleRowClick() {
-    if (consumeDragFlag()) return;
+  /** Shared guard for the checkbox/label tap targets: a swipe-drag or an
+   * already-revealed delete action should never also trigger toggle/edit. */
+  function guardedTap(): boolean {
+    if (consumeDragFlag()) return false;
     if (isRevealed) {
       reset();
-      return;
+      return false;
     }
-    toggleShoppingItem(item.id);
+    return true;
+  }
+
+  function startEdit() {
+    if (!guardedTap()) return;
+    setDraftName(item.name);
+    setEditing(true);
+  }
+
+  function commitEdit() {
+    const trimmed = draftName.trim();
+    if (trimmed && trimmed !== item.name) {
+      updateShoppingItem(item.id, { name: trimmed });
+    }
+    setEditing(false);
   }
 
   return (
@@ -200,34 +219,64 @@ function ShoppingListRow({ item }: { item: ShoppingItem }) {
       </div>
 
       <div
-        role="button"
-        tabIndex={0}
-        onClick={handleRowClick}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") handleRowClick();
-        }}
         {...bind}
         style={style}
         className="card-soft relative flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left ring-1 ring-border/60 transition-transform active:scale-[0.98]"
       >
-        <span
-          className={cn(
-            "flex size-5 shrink-0 items-center justify-center rounded-full border-2",
-            item.done ? "border-primary bg-primary" : "border-muted-foreground/40",
-          )}
-        />
-        <span className="min-w-0 flex-1">
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => {
+            if (guardedTap()) toggleShoppingItem(item.id);
+          }}
+          aria-label={item.done ? "Odznacz produkt" : "Zaznacz produkt"}
+          className="-m-2 flex shrink-0 items-center justify-center p-2"
+        >
           <span
             className={cn(
-              "block text-[15px] font-medium",
-              item.done && "text-muted-foreground line-through",
+              "flex size-5 items-center justify-center rounded-full border-2",
+              item.done ? "border-primary bg-primary" : "border-muted-foreground/40",
             )}
-          >
-            {item.name}
-            {item.amount && (
-              <span className="ml-1.5 text-sm text-muted-foreground">{item.amount}</span>
-            )}
-          </span>
+          />
+        </button>
+        <span className="min-w-0 flex-1">
+          {editing ? (
+            <Input
+              autoFocus
+              onPointerDown={(e) => e.stopPropagation()}
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitEdit();
+                } else if (e.key === "Escape") {
+                  setEditing(false);
+                }
+              }}
+              onBlur={commitEdit}
+              className="h-8 rounded-lg px-2 text-[15px]"
+            />
+          ) : (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={startEdit}
+              className="block w-full text-left"
+            >
+              <span
+                className={cn(
+                  "block text-[15px] font-medium",
+                  item.done && "text-muted-foreground line-through",
+                )}
+              >
+                {item.name}
+                {item.amount && (
+                  <span className="ml-1.5 text-sm text-muted-foreground">{item.amount}</span>
+                )}
+              </span>
+            </button>
+          )}
           {item.recipe_title && (
             <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
               Przepis: {item.recipe_title}

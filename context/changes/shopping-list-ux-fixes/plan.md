@@ -610,24 +610,24 @@ server-side for all existing rows (confirmed with the peer session).
 
 #### Automated
 
-- [x] 3.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [x] 3.2 Lint passes: `bun run lint`
-- [x] 3.3 Build succeeds: `bun run build`
+- [x] 3.1 Typecheck passes: `bunx tsc -p tsconfig.json` — c64f772
+- [x] 3.2 Lint passes: `bun run lint` — c64f772
+- [x] 3.3 Build succeeds: `bun run build` — c64f772
 
 #### Manual
 
-- [ ] 3.4 Tapping empty slot opens focused input
-- [ ] 3.5 Enter saves and chains to a fresh focused input, repeatable
-- [ ] 3.6 Tapping away from an empty input collapses it back to idle
-- [ ] 3.7 Add row never obscured by the tab bar in mobile emulation
+- [x] 3.4 Tapping empty slot opens focused input — c64f772
+- [x] 3.5 Enter saves and chains to a fresh focused input, repeatable — c64f772
+- [x] 3.6 Tapping away from an empty input collapses it back to idle — c64f772
+- [x] 3.7 Add row never obscured by the tab bar in mobile emulation — c64f772
 
 ### Phase 4: Inline edit on tap (name only)
 
 #### Automated
 
-- [ ] 4.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [ ] 4.2 Lint passes: `bun run lint`
-- [ ] 4.3 Build succeeds: `bun run build`
+- [x] 4.1 Typecheck passes: `bunx tsc -p tsconfig.json`
+- [x] 4.2 Lint passes: `bun run lint`
+- [x] 4.3 Build succeeds: `bun run build`
 
 #### Manual
 
