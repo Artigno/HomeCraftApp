@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Check, Plus, Trash2, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { ReceiptCheckoutModal } from "@/components/ReceiptCheckoutModal";
@@ -39,6 +39,27 @@ function ShoppingList() {
       [...shopping].sort((a, b) => Number(a.done) - Number(b.done) || a.sort_order - b.sort_order),
     [shopping],
   );
+
+  // Freeze the rendered order briefly after a toggle so a fast second tap
+  // lands on the item the user is looking at, not one that just slid up to
+  // take its place — the toggle itself still applies instantly (checkbox
+  // state), only the visual reflow is delayed.
+  const [frozenOrder, setFrozenOrder] = useState<string[] | null>(null);
+  const freezeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  function freezeOrderBriefly() {
+    if (frozenOrder === null) {
+      setFrozenOrder(sorted.map((i) => i.id));
+    }
+    if (freezeTimer.current) clearTimeout(freezeTimer.current);
+    freezeTimer.current = setTimeout(() => setFrozenOrder(null), 300);
+  }
+
+  const displayOrder = useMemo(() => {
+    if (!frozenOrder) return sorted;
+    const byId = new Map(shopping.map((i) => [i.id, i]));
+    return frozenOrder.map((id) => byId.get(id)).filter((i): i is ShoppingItem => i !== undefined);
+  }, [frozenOrder, sorted, shopping]);
 
   const pending = shopping.filter((i) => !i.done).length;
 
@@ -91,8 +112,8 @@ function ShoppingList() {
       )}
 
       <ul className="space-y-2 px-4 pb-3 pt-3">
-        {sorted.map((item) => (
-          <ShoppingListRow key={item.id} item={item} />
+        {displayOrder.map((item) => (
+          <ShoppingListRow key={item.id} item={item} onToggleFreeze={freezeOrderBriefly} />
         ))}
         <AddItemRow onAdd={addByName} />
       </ul>
@@ -166,7 +187,13 @@ function AddItemRow({ onAdd }: { onAdd: (name: string) => void }) {
   );
 }
 
-function ShoppingListRow({ item }: { item: ShoppingItem }) {
+function ShoppingListRow({
+  item,
+  onToggleFreeze,
+}: {
+  item: ShoppingItem;
+  onToggleFreeze: () => void;
+}) {
   const { toggleShoppingItem, removeShoppingItem, dismissWarning, updateShoppingItem } =
     useHomeSync();
   const { bind, style, isRevealed, reset, consumeDragFlag } = useSwipeToDelete({
@@ -227,7 +254,10 @@ function ShoppingListRow({ item }: { item: ShoppingItem }) {
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => {
-            if (guardedTap()) toggleShoppingItem(item.id);
+            if (guardedTap()) {
+              onToggleFreeze();
+              toggleShoppingItem(item.id);
+            }
           }}
           aria-label={item.done ? "Odznacz produkt" : "Zaznacz produkt"}
           className="-m-2 flex shrink-0 items-center justify-center p-2"

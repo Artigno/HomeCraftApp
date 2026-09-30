@@ -389,6 +389,24 @@ toggle itself.
 
 **File**: `src/routes/shopping.tsx` (`ShoppingList`)
 
+#### 2. Toggle moves the item to the end of its new group
+
+**File**: `src/lib/store.tsx` (`toggleShoppingItem`)
+
+**Intent**: Found during manual verification — with only `sort_order` as
+the within-group tiebreaker (Phase 2), unchecking an item snapped it back
+to wherever its old `sort_order` placed it among pending items, not to the
+bottom. A toggle should read as "move to the end of wherever this item
+lands now", matching a normal checklist's feel.
+
+**Contract**: `toggleShoppingItem` now also assigns the toggled item
+`sort_order = Math.max(0, ...shopping.map(i => i.sort_order)) + 1` (same
+"append at the end" computation `addShoppingItems` uses), and PATCHes it
+via a second `enqueue("PATCH", ...)` call alongside the existing
+`/shopping-items/{id}/toggle` request (that endpoint has no body; the
+`sort_order` update travels as its own request, following the same
+optimistic-patch shape as `updateShoppingItem`).
+
 **Intent**: `toggleShoppingItem` already updates `done` (and therefore the
 checkbox's visual state) instantly — that's correct and shouldn't change.
 The bug is that the *list* re-sorts (moving the item to the other group)
@@ -399,7 +417,9 @@ tap still lands on what the user is looking at.
 
 **Contract**: Track a `frozenOrder: string[] | null` state (an ordered
 list of item ids). On any toggle, if `frozenOrder` is `null`, capture the
-*current* `sorted` order's ids into it and start a ~400ms timer; while
+*current* `sorted` order's ids into it and start a ~300ms timer (each
+subsequent toggle while already frozen resets the timer, so a fast burst
+only reflows once, 300ms after the last tap); while
 `frozenOrder` is set, render items in that captured id order (mapping ids
 back to their current, possibly-updated item objects — filter out any id
 no longer present, e.g. deleted mid-freeze) instead of the live `sorted`
@@ -418,11 +438,12 @@ sees, instead of an instant snap at tap-time.
 #### Manual Verification:
 
 - Tap an item to toggle it done, then immediately tap where the *next*
-  item down used to be, before ~400ms passes — confirm the second tap
+  item down used to be, before ~300ms passes — confirm the second tap
   lands on the item that's still visually there, not one that jumped up
   early.
-- Wait past 400ms after a toggle — confirm the list settles into the
-  correct done-to-bottom order.
+- Wait past 300ms after a toggle — confirm the list settles with the
+  toggled item at the end of its new group (not snapped back to its old
+  spot).
 
 ---
 
@@ -625,30 +646,30 @@ server-side for all existing rows (confirmed with the peer session).
 
 #### Automated
 
-- [x] 4.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [x] 4.2 Lint passes: `bun run lint`
-- [x] 4.3 Build succeeds: `bun run build`
+- [x] 4.1 Typecheck passes: `bunx tsc -p tsconfig.json` — 78c0542
+- [x] 4.2 Lint passes: `bun run lint` — 78c0542
+- [x] 4.3 Build succeeds: `bun run build` — 78c0542
 
 #### Manual
 
-- [ ] 4.4 Checkbox tap toggles without entering edit mode
-- [ ] 4.5 Label tap opens inline edit
-- [ ] 4.6 Enter commits and exits without chaining
-- [ ] 4.7 Escape cancels without saving
-- [ ] 4.8 Swipe-to-delete still works unaffected
+- [x] 4.4 Checkbox tap toggles without entering edit mode — 78c0542
+- [x] 4.5 Label tap opens inline edit — 78c0542
+- [x] 4.6 Enter commits and exits without chaining — 78c0542
+- [x] 4.7 Escape cancels without saving — 78c0542
+- [x] 4.8 Swipe-to-delete still works unaffected — 78c0542
 
 ### Phase 5: Debounced re-sort on toggle
 
 #### Automated
 
-- [ ] 5.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [ ] 5.2 Lint passes: `bun run lint`
-- [ ] 5.3 Build succeeds: `bun run build`
+- [x] 5.1 Typecheck passes: `bunx tsc -p tsconfig.json`
+- [x] 5.2 Lint passes: `bun run lint`
+- [x] 5.3 Build succeeds: `bun run build`
 
 #### Manual
 
 - [ ] 5.4 Fast second tap lands on the still-visually-present item
-- [ ] 5.5 List settles into correct order after ~400ms
+- [ ] 5.5 List settles with the toggled item at the end of its new group after ~300ms
 
 ### Phase 6: Drag-and-drop reorder (persisted)
 
