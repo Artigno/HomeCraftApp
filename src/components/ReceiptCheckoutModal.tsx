@@ -13,11 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { useHomeSync } from "@/lib/store";
 import { apiParseReceipt } from "@/lib/api/client";
+import { compressImage } from "@/lib/image";
 import type { ReceiptParseLine, ShoppingItem } from "@/lib/api/types";
 
 const DEFAULT_CATEGORY = "Spożywcze";
 const ESTIMATE_PER_ITEM = 12;
 const GENERIC_PARSE_ERROR = "Nie udało się odczytać paragonu. Wprowadź dane ręcznie.";
+const TOO_LARGE_ERROR = "Zdjęcie jest za duże. Spróbuj ponownie lub wprowadź dane ręcznie.";
 
 interface ReceiptCheckoutModalProps {
   open: boolean;
@@ -58,9 +60,12 @@ export function ReceiptCheckoutModal({
     if (!file) return;
     setStep("processing");
     try {
-      const result = await apiParseReceipt(file);
+      const compressed = await compressImage(file);
+      const result = await apiParseReceipt(compressed);
       if (!result.ok) {
-        toast.error(result.message ?? GENERIC_PARSE_ERROR);
+        const message =
+          result.message ?? (result.status === 413 ? TOO_LARGE_ERROR : GENERIC_PARSE_ERROR);
+        toast.error(message);
         goToManualForm();
         return;
       }
