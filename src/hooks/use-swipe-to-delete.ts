@@ -86,6 +86,19 @@ export function useSwipeToDelete({ onDelete }: UseSwipeToDeleteOptions) {
     return was;
   }, []);
 
+  /** For a caller (e.g. a composed long-press-drag) that just won a gesture
+   * this hook was also mid-tracking — resets all internal refs without a
+   * real PointerEvent to release capture from, and without running
+   * endDrag's commit logic (no delete, no reveal; the gesture wasn't a
+   * swipe). Safe to call even if nothing was in progress. */
+  const forceCancel = useCallback(() => {
+    dragging.current = false;
+    captured.current = false;
+    draggedFar.current = false;
+    setTranslateX(0);
+    setIsRevealed(false);
+  }, []);
+
   return {
     bind: {
       onPointerDown,
@@ -97,5 +110,6 @@ export function useSwipeToDelete({ onDelete }: UseSwipeToDeleteOptions) {
     isRevealed,
     reset,
     consumeDragFlag,
+    forceCancel,
   };
 }

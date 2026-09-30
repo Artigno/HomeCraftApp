@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -12,6 +13,7 @@ import {
 import {
   SortableContext,
   arrayMove,
+  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
@@ -76,6 +78,12 @@ function ShoppingList() {
     freezeTimer.current = setTimeout(() => setFrozenOrder(null), 400);
   }
 
+  useEffect(() => {
+    return () => {
+      if (freezeTimer.current) clearTimeout(freezeTimer.current);
+    };
+  }, []);
+
   const displayOrder = useMemo(() => {
     if (!frozenOrder) return sorted;
     const byId = new Map(shopping.map((i) => [i.id, i]));
@@ -87,6 +95,10 @@ function ShoppingList() {
     // during a held-still 400ms press easily exceeds 5px and was silently
     // cancelling activation before the delay ever completed.
     useSensor(PointerSensor, { activationConstraint: { delay: 400, tolerance: 10 } }),
+    // Keyboard-only path: focus a row (its <li> is already tabIndex 0 via
+    // useSortable's own `attributes`), Space to pick up, arrow keys to
+    // move, Space/Enter to drop — dnd-kit's standard accessible pattern.
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -286,7 +298,19 @@ function ShoppingListRowPreview({ item }: { item: ShoppingItem }) {
             <span className="ml-1.5 text-sm text-muted-foreground">{item.amount}</span>
           )}
         </span>
+        {item.recipe_title && (
+          <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            Przepis: {item.recipe_title}
+          </span>
+        )}
       </span>
+      {item.recent_purchase_days !== undefined &&
+        item.recent_purchase_days <= 7 &&
+        !item.warning_dismissed && (
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--status-warning)]/14 px-2 py-1 text-[11px] font-semibold text-[var(--status-warning)]">
+            kupiono {item.recent_purchase_days} dni temu
+          </span>
+        )}
     </div>
   );
 }
@@ -306,6 +330,7 @@ function ShoppingListRow({
     isRevealed,
     reset,
     consumeDragFlag,
+    forceCancel,
   } = useSwipeToDelete({
     onDelete: () => removeShoppingItem(item.id),
   });
@@ -314,6 +339,16 @@ function ShoppingListRow({
     id: item.id,
     disabled: editing,
   });
+
+  // If dnd-kit's long-press-drag activates while useSwipeToDelete was
+  // already mid-tracking a horizontal read on the same gesture, the
+  // composed pointer handlers below stop forwarding move/up/cancel to the
+  // swipe hook (isDragging gate) — its internal dragging/captured refs
+  // would otherwise stay stuck until the next pointerdown. Force a clean
+  // handoff the moment a real drag wins.
+  useEffect(() => {
+    if (isDragging) forceCancel();
+  }, [isDragging, forceCancel]);
   const [draftName, setDraftName] = useState(item.name);
 
   // Compose two independent pointer-gesture systems on the same element:
@@ -360,7 +395,8 @@ function ShoppingListRow({
   // Swipe's horizontal translateX stays on the inner card only, since that
   // is specifically what reveals the delete panel sibling within the row.
   const liStyle: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform:
+      `${CSS.Transform.toString(transform) ?? ""} ${isDragging ? "scale(0.95)" : ""}`.trim(),
     transition,
     touchAction: "none",
     ...(isDragging ? { opacity: 0.4 } : {}),

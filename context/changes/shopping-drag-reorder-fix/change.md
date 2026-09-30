@@ -1,7 +1,7 @@
 ---
 change_id: shopping-drag-reorder-fix
 title: Fix shopping list drag-and-drop reordering
-status: implemented
+status: impl_reviewed
 created: 2026-09-30
 updated: 2026-09-30
 archived_at: null
