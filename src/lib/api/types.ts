@@ -63,6 +63,21 @@ export interface ShoppingItem {
 export interface PurchaseLine {
   name: string;
   price: number;
+  shopping_item_id?: string | null;
+}
+
+export interface ReceiptParseLine {
+  name: string;
+  price: number;
+  shopping_item_id: string | null;
+}
+
+export interface ReceiptParseResult {
+  store: string;
+  category: string;
+  total: number;
+  purchased_at: string;
+  lines: ReceiptParseLine[];
 }
 
 export interface Purchase {

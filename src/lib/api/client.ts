@@ -8,6 +8,7 @@
  */
 
 import { clearAuthToken, getAuthToken, isAuthenticated } from "../auth";
+import type { ReceiptParseResult, ShoppingItem } from "./types";
 
 const API_BASE =
   (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.homesync.local/api";
@@ -250,6 +251,47 @@ export async function apiRejectPendingMember(id: number): Promise<{ ok: boolean;
     signal: AbortSignal.timeout(10_000),
   });
   return { ok: res.ok, status: res.status };
+}
+
+/**
+ * POST /receipts/parse — multipart upload, synchronous. Must NOT set
+ * Content-Type itself: the browser generates the correct
+ * `multipart/form-data; boundary=…` value from the FormData body, and
+ * setting it manually breaks the boundary so the backend can't parse it.
+ */
+export async function apiParseReceipt(
+  file: File,
+): Promise<
+  { ok: true; data: ReceiptParseResult } | { ok: false; status: number; message?: string }
+> {
+  const formData = new FormData();
+  formData.append("image", file);
+  const res = await fetch(`${API_BASE}/receipts/parse`, {
+    method: "POST",
+    headers: { Accept: "application/json", ...authHeaders() },
+    body: formData,
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => undefined)) as { message?: string } | undefined;
+    return body?.message
+      ? { ok: false, status: res.status, message: body.message }
+      : { ok: false, status: res.status };
+  }
+  return { ok: true, data: (await res.json()) as ReceiptParseResult };
+}
+
+/** POST /shopping-items/categorize — synchronous, caller needs the reordered list immediately. */
+export async function apiCategorizeShoppingItems(): Promise<
+  { ok: true; items: ShoppingItem[] } | { ok: false; status: number }
+> {
+  const res = await fetch(`${API_BASE}/shopping-items/categorize`, {
+    method: "POST",
+    headers: { Accept: "application/json", ...authHeaders() },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) return { ok: false, status: res.status };
+  return { ok: true, items: (await res.json()) as ShoppingItem[] };
 }
 
 /** DELETE /household/members/{id} — synchronous, owner-only, keeps the member's data. */
