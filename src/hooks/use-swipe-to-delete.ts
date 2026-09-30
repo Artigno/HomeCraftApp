@@ -14,7 +14,9 @@ export function useSwipeToDelete({ onDelete }: UseSwipeToDeleteOptions) {
   const [isRevealed, setIsRevealed] = useState(false);
   const dragging = useRef(false);
   const draggedFar = useRef(false);
+  const captured = useRef(false);
   const startX = useRef(0);
+  const startY = useRef(0);
   const startTranslate = useRef(0);
 
   const reset = useCallback(() => {
@@ -26,18 +28,31 @@ export function useSwipeToDelete({ onDelete }: UseSwipeToDeleteOptions) {
     (e: ReactPointerEvent<HTMLElement>) => {
       dragging.current = true;
       draggedFar.current = false;
+      captured.current = false;
       startX.current = e.clientX;
+      startY.current = e.clientY;
       startTranslate.current = translateX;
-      e.currentTarget.setPointerCapture(e.pointerId);
+      // No setPointerCapture here — deferred to onPointerMove, once
+      // horizontal movement actually confirms this is a swipe and not a
+      // tap or a long-press-drag. Capturing eagerly on every pointerdown
+      // redirects a child element's (checkbox, label) click synthesis to
+      // this row regardless of how far the pointer ends up moving.
     },
     [translateX],
   );
 
   const onPointerMove = useCallback((e: ReactPointerEvent<HTMLElement>) => {
     if (!dragging.current) return;
-    const delta = e.clientX - startX.current;
-    if (Math.abs(delta) > CLICK_SUPPRESS_THRESHOLD) draggedFar.current = true;
-    const next = Math.min(0, Math.max(startTranslate.current + delta, -(COMMIT_THRESHOLD + 40)));
+    const deltaX = e.clientX - startX.current;
+    if (!captured.current) {
+      const deltaY = e.clientY - startY.current;
+      if (Math.abs(deltaX) <= CLICK_SUPPRESS_THRESHOLD) return; // not enough movement to tell yet
+      if (Math.abs(deltaX) <= Math.abs(deltaY)) return; // vertical-dominant — leave it to a long-press-drag, not a swipe
+      captured.current = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    draggedFar.current = true;
+    const next = Math.min(0, Math.max(startTranslate.current + deltaX, -(COMMIT_THRESHOLD + 40)));
     setTranslateX(next);
   }, []);
 
@@ -45,9 +60,10 @@ export function useSwipeToDelete({ onDelete }: UseSwipeToDeleteOptions) {
     (e: ReactPointerEvent<HTMLElement>) => {
       if (!dragging.current) return;
       dragging.current = false;
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      if (captured.current && e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId);
       }
+      captured.current = false;
       setTranslateX((current) => {
         if (current <= -COMMIT_THRESHOLD) {
           onDelete();
