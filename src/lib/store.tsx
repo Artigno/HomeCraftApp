@@ -13,6 +13,7 @@ import type {
   HomeSyncState,
   MaintenanceTask,
   Purchase,
+  PurchaseLine,
   Recipe,
   ShoppingItem,
   TaskStatus,
@@ -40,7 +41,13 @@ interface StoreValue extends HomeSyncState {
     id: string,
     patch: Partial<Pick<ShoppingItem, "name" | "sort_order">>,
   ) => void;
-  completePurchase: (data: { store: string; total: number; category: string }) => void;
+  completePurchase: (data: {
+    store: string;
+    total: number;
+    category: string;
+    lines?: PurchaseLine[];
+    purchased_at?: string;
+  }) => void;
   dismissSuggestion: (name: string) => void;
   daysSincePurchase: (name: string) => number | undefined;
   addRecipe: (recipe: Omit<Recipe, "id">) => void;
@@ -244,7 +251,7 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         }));
         enqueue("PATCH", `/shopping-items/${id}`, patch);
       },
-      completePurchase: ({ store, total, category }) => {
+      completePurchase: ({ store, total, category, lines, purchased_at }) => {
         haptic(25);
         setState((s) => {
           const bought = s.shopping.filter((i) => i.done);
@@ -253,11 +260,13 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
             store,
             category,
             total,
-            purchased_at: new Date().toISOString(),
-            lines: bought.map((i) => ({
-              name: i.name,
-              price: Math.round((total / Math.max(bought.length, 1)) * 100) / 100,
-            })),
+            purchased_at: purchased_at ?? new Date().toISOString(),
+            lines:
+              lines ??
+              bought.map((i) => ({
+                name: i.name,
+                price: Math.round((total / Math.max(bought.length, 1)) * 100) / 100,
+              })),
           };
           enqueue("POST", "/receipts/process", purchase);
           return {

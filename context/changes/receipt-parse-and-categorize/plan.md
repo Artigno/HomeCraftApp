@@ -357,17 +357,17 @@ None — no local data model changes, only new optional fields.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [x] 1.2 Lint passes: `bun run lint`
-- [x] 1.3 Build succeeds: `bun run build`
+- [x] 1.1 Typecheck passes: `bunx tsc -p tsconfig.json` — a25d265
+- [x] 1.2 Lint passes: `bun run lint` — a25d265
+- [x] 1.3 Build succeeds: `bun run build` — a25d265
 
 ### Phase 2: Receipt parse UI
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [ ] 2.2 Lint passes: `bun run lint`
-- [ ] 2.3 Build succeeds: `bun run build`
+- [x] 2.1 Typecheck passes: `bunx tsc -p tsconfig.json`
+- [x] 2.2 Lint passes: `bun run lint`
+- [x] 2.3 Build succeeds: `bun run build`
 
 #### Manual
 
