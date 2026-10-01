@@ -270,7 +270,11 @@ export async function apiParseReceipt(
     method: "POST",
     headers: { Accept: "application/json", ...authHeaders() },
     body: formData,
-    signal: AbortSignal.timeout(10_000),
+    // 35s, not the usual 10s: server-side vision parsing can legitimately
+    // take 15-20s+ on long receipts, within the backend's own 29s Lambda /
+    // 25s internal HTTP-client budget — a tighter client timeout here
+    // showed a successful-but-slow parse as "cancelled" in the UI.
+    signal: AbortSignal.timeout(35_000),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => undefined)) as { message?: string } | undefined;
