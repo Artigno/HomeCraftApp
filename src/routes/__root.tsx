@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { LayoutGrid, ChefHat, ShoppingCart, PieChart } from "lucide-react";
+import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { HomeSyncProvider } from "@/lib/store";
 import { isAuthenticated } from "@/lib/auth";
@@ -170,9 +171,33 @@ function RootComponent() {
   const isPublicRoute = PUBLIC_ROUTES.has(pathname);
 
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined);
-    }
+    if (!("serviceWorker" in navigator)) return;
+    // sw.js calls skipWaiting()/clientsClaim() unconditionally, so a new
+    // version takes control of already-open tabs without waiting for them
+    // to close — but their JS bundle, already loaded in memory, stays old
+    // until a reload. Surface that as a dismissible prompt rather than
+    // reloading automatically, since an unprompted reload could interrupt
+    // whatever the user is mid-typing (e.g. editing a shopping item).
+    // clientsClaim() makes a brand-new SW take control of this very first
+    // load too, firing "controllerchange" even though there's no older
+    // version to prompt about — only show the toast when a controller was
+    // already active before this run (i.e. a genuine update, not first install).
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloaded || !hadController) return;
+      toast("Dostępna nowa wersja aplikacji", {
+        duration: Infinity,
+        action: {
+          label: "Odśwież",
+          onClick: () => {
+            reloaded = true;
+            window.location.reload();
+          },
+        },
+      });
+    });
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined);
   }, []);
 
   // Client-only auth guard — see the note on beforeLoad above for why this

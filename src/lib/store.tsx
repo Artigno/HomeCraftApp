@@ -142,9 +142,21 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
     // no-ops then, so re-run it the moment login actually succeeds.
     const onAuth = () => void syncFromBackend();
     window.addEventListener("homesync:auth", onAuth);
+    // Re-pull on return-to-app (tab switch, PWA resume from background, OS
+    // app-switcher) so a change another household member made while this
+    // device was away shows up without a manual reload. "visibilitychange"
+    // alone covers PWA resume; "focus" additionally covers desktop
+    // multi-window/multi-tab switching, which visibilitychange can miss.
+    const onReturnToApp = () => {
+      if (document.visibilityState === "visible") void syncFromBackend();
+    };
+    document.addEventListener("visibilitychange", onReturnToApp);
+    window.addEventListener("focus", onReturnToApp);
     return () => {
       window.removeEventListener("homesync:queue", onQueue);
       window.removeEventListener("homesync:auth", onAuth);
+      document.removeEventListener("visibilitychange", onReturnToApp);
+      window.removeEventListener("focus", onReturnToApp);
     };
   }, [syncFromBackend]);
 
