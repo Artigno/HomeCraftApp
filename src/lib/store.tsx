@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { apiGet, enqueue, flushQueue, readQueue } from "./api/client";
+import { apiCategorizeShoppingItems, apiGet, enqueue, flushQueue, readQueue } from "./api/client";
 import type {
   HomeSyncState,
   MaintenanceTask,
@@ -49,6 +49,9 @@ interface StoreValue extends HomeSyncState {
     purchased_at?: string;
   }) => void;
   dismissSuggestion: (name: string) => void;
+  /** AI-reorders pending items into aisle-category order; server-authoritative,
+   * no optimistic local sort. Returns false (list left untouched) on failure. */
+  categorizeShoppingItems: () => Promise<boolean>;
   daysSincePurchase: (name: string) => number | undefined;
   addRecipe: (recipe: Omit<Recipe, "id">) => void;
   addTin: (tin: Omit<Tin, "id">) => void;
@@ -278,6 +281,12 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       },
       dismissSuggestion: (name) =>
         setState((s) => ({ ...s, dismissed_suggestions: [...s.dismissed_suggestions, name] })),
+      categorizeShoppingItems: async () => {
+        const result = await apiCategorizeShoppingItems();
+        if (!result.ok) return false;
+        setState((s) => ({ ...s, shopping: result.items }));
+        return true;
+      },
       daysSincePurchase,
       addRecipe: (recipe) => {
         const created: Recipe = { ...recipe, id: crypto.randomUUID() };

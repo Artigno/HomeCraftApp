@@ -90,10 +90,20 @@ concrete layout bugs found along the way.
 Six phases, each independently shippable and manually verifiable before the
 next starts. Phases 1–2 are small, isolated fixes. Phase 3 structurally
 resolves the add-bar/tab-bar overlap as a side effect of replacing the fixed
-bar (no separate layout-offset fix needed — see Phase 3's note). Phase 5's
-debounce mechanism is intentionally later made unreachable by Phase 6's
-change to the sort key, and Phase 6 removes it as dead code rather than
-leaving it in place.
+bar (no separate layout-offset fix needed — see Phase 3's note).
+
+**Correction found during Phase 5's manual verification**: the original
+plan for Phase 6 assumed dropping done/pending grouping would make Phase
+5's freeze-on-toggle mechanism unreachable (nothing would auto-move on
+toggle once groups no longer drove order), and planned to delete it as
+dead code. That assumption broke: manual testing of Phase 5 surfaced that
+unchecking an item should move it to the end of the list rather than
+back to its old spot, so `toggleShoppingItem` was changed to also bump
+the toggled item's `sort_order` to the end — meaning a toggle still
+*moves* the item (to the end of the whole list, not just its old group)
+even after Phase 6 drops grouping. The reorder-under-finger risk Phase 5
+exists to prevent is therefore still real post-Phase-6. Phase 6 keeps the
+freeze mechanism rather than removing it (see Phase 6, Change #2).
 
 ## Critical Implementation Details
 
@@ -454,10 +464,11 @@ sees, instead of an instant snap at tap-time.
 Adds `@dnd-kit` for long-press-to-drag reordering. This phase also changes
 the list's sort key from "done-to-bottom, then `sort_order`" (Phase 2) to
 pure `sort_order` across all items — the user explicitly chose free
-reordering over preserving the done-group split — which makes Phase 5's
-freeze mechanism unreachable (nothing auto-moves across groups on toggle
-anymore, since groups no longer drive order); this phase removes that
-logic rather than leaving it as dead code.
+reordering over preserving the done-group split. Phase 5's freeze
+mechanism is **kept**, not removed (see this plan's "Correction found
+during Phase 5's manual verification" note above) — toggling still moves
+an item's `sort_order` to the end of the list, so the reorder-under-finger
+risk survives grouping removal.
 
 ### Changes Required:
 
@@ -480,16 +491,16 @@ removed in favor of manual order being the only order.
 
 **Contract**: `sorted` becomes `[...shopping].sort((a, b) => a.sort_order - b.sort_order)`.
 
-#### 3. Remove Phase 5's freeze mechanism
+#### 3. Keep Phase 5's freeze mechanism, base drag order on it
 
 **File**: `src/routes/shopping.tsx` (`ShoppingList`)
 
-**Intent**: With done-grouping gone, toggling an item never changes its
-position, so there is nothing left for the freeze-on-toggle mechanism to
-guard against.
-
-**Contract**: Remove the `frozenOrder` state, its timer effect, and the
-id-remapping render path added in Phase 5; render directly from `sorted`.
+**Intent**: Toggling still bumps `sort_order` to the end of the list (per
+the Phase 5 correction), so `displayOrder` (the frozen-aware render order)
+stays the source of truth for what's on screen — no change here beyond
+using `displayOrder`'s id order as `SortableContext`'s `items`, so drag
+reorders against what the user actually sees rather than the live
+(possibly not-yet-reflowed) `sorted` order.
 
 #### 4. Drag-and-drop wiring
 
@@ -549,8 +560,9 @@ source and destination index, not the whole list).
   (survives a fresh `GET /shopping-items` sync), including across a
   done/pending mix (an item can now sit anywhere regardless of its done
   state).
-- Toggle an item done — confirm it no longer jumps to the bottom (grouping
-  removed, matches the confirmed decision).
+- Toggle an item done — confirm it still moves to the end of the list
+  (Phase 5's move-to-end behavior, not grouping) after the ~300ms freeze,
+  regardless of its own or neighbors' done state.
 
 ---
 
@@ -662,27 +674,27 @@ server-side for all existing rows (confirmed with the peer session).
 
 #### Automated
 
-- [x] 5.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [x] 5.2 Lint passes: `bun run lint`
-- [x] 5.3 Build succeeds: `bun run build`
+- [x] 5.1 Typecheck passes: `bunx tsc -p tsconfig.json` — b16b3b4
+- [x] 5.2 Lint passes: `bun run lint` — b16b3b4
+- [x] 5.3 Build succeeds: `bun run build` — b16b3b4
 
 #### Manual
 
-- [ ] 5.4 Fast second tap lands on the still-visually-present item
-- [ ] 5.5 List settles with the toggled item at the end of its new group after ~300ms
+- [x] 5.4 Fast second tap lands on the still-visually-present item — b16b3b4
+- [x] 5.5 List settles with the toggled item at the end of its new group after ~300ms — b16b3b4
 
 ### Phase 6: Drag-and-drop reorder (persisted)
 
 #### Automated
 
-- [ ] 6.1 Typecheck passes: `bunx tsc -p tsconfig.json`
-- [ ] 6.2 Lint passes: `bun run lint`
-- [ ] 6.3 Build succeeds: `bun run build`
-- [ ] 6.4 Dependency installed: `grep '"@dnd-kit/core"' package.json`
+- [x] 6.1 Typecheck passes: `bunx tsc -p tsconfig.json`
+- [x] 6.2 Lint passes: `bun run lint`
+- [x] 6.3 Build succeeds: `bun run build`
+- [x] 6.4 Dependency installed: `grep '"@dnd-kit/core"' package.json`
 
 #### Manual
 
 - [ ] 6.5 Long-press-and-drag reorders; quick tap still just toggles
 - [ ] 6.6 Fast swipe still deletes, not intercepted by drag sensor
 - [ ] 6.7 Reorder persists across reload
-- [ ] 6.8 Toggling done no longer moves an item (grouping removed)
+- [ ] 6.8 Toggling done still moves the item to the list end (grouping removed, but Phase 5's move-to-end + freeze behavior is unchanged)

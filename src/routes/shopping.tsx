@@ -18,10 +18,26 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Check, Plus, Trash2, X } from "lucide-react";
+import {
+  Check,
+  GripVertical,
+  Loader2,
+  MoreVertical,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { ReceiptCheckoutModal } from "@/components/ReceiptCheckoutModal";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useSwipeToDelete } from "@/hooks/use-swipe-to-delete";
 import { computeSuggestion } from "@/lib/suggestions";
@@ -50,8 +66,10 @@ function ShoppingList() {
     daysSincePurchase,
     dismissSuggestion,
     updateShoppingItem,
+    categorizeShoppingItems,
   } = useHomeSync();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [categorizing, setCategorizing] = useState(false);
 
   // Free reorder (drag-and-drop, below) — no more automatic done-to-bottom
   // grouping. toggleShoppingItem still moves an item's sort_order to the
@@ -135,6 +153,17 @@ function ShoppingList() {
     [purchases, shopping, dismissed_suggestions],
   );
 
+  async function handleCategorize() {
+    setCategorizing(true);
+    const ok = await categorizeShoppingItems();
+    setCategorizing(false);
+    if (ok) {
+      toast.success("Lista posortowana wg kategorii");
+    } else {
+      toast.error("Nie udało się skategoryzować listy. Spróbuj ponownie.");
+    }
+  }
+
   function addByName(rawName: string) {
     const trimmed = rawName.trim();
     if (!trimmed) return;
@@ -153,6 +182,30 @@ function ShoppingList() {
       <PageHeader
         title="Zakupy"
         subtitle={pending > 0 ? `${pending} rzeczy do kupienia` : "Lista jest pusta"}
+        action={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Więcej akcji"
+                disabled={categorizing}
+                className="-m-2 flex size-9 shrink-0 items-center justify-center rounded-full text-foreground active:scale-90 disabled:opacity-50"
+              >
+                {categorizing ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : (
+                  <MoreVertical className="size-5" />
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem disabled={pending < 2} onSelect={handleCategorize}>
+                <Sparkles className="size-4" />
+                Kategoryzuj AI
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
       />
 
       {suggestion && (
@@ -304,7 +357,7 @@ function ShoppingListRowPreview({ item }: { item: ShoppingItem }) {
           </span>
         )}
       </span>
-      {item.recent_purchase_days !== undefined &&
+      {typeof item.recent_purchase_days === "number" &&
         item.recent_purchase_days <= 7 &&
         !item.warning_dismissed && (
           <span className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--status-warning)]/14 px-2 py-1 text-[11px] font-semibold text-[var(--status-warning)]">
@@ -351,18 +404,15 @@ function ShoppingListRow({
   }, [isDragging, forceCancel]);
   const [draftName, setDraftName] = useState(item.name);
 
-  // Compose two independent pointer-gesture systems on the same element:
-  // dnd-kit's long-press-to-drag (via `listeners`/`attributes`) and
-  // useSwipeToDelete's horizontal swipe (via `bind`). dnd-kit only wires
-  // onPointerDown itself (it manages move/up internally once a drag
-  // activates), so only onPointerDown needs explicit composition; the
-  // swipe hook's own move/up/cancel handlers are gated on `isDragging` so
-  // they stop reacting the moment dnd-kit's activation constraint
-  // (400ms delay, 5px tolerance) commits to a drag.
-  function handlePointerDown(e: React.PointerEvent<HTMLLIElement>) {
-    listeners?.["onPointerDown"]?.(e);
-    bind.onPointerDown(e);
-  }
+  // Drag activation lives on a dedicated handle, not the whole row: a
+  // long-press-to-drag with touch-action "none" spread over the entire
+  // <li> blocked the browser's native vertical scroll for any touch that
+  // started on an item (only the gaps between rows could scroll). Scoping
+  // "none" to the handle button alone — dnd-kit's own documented
+  // drag-handle pattern — leaves the rest of the row's touch-action at its
+  // default, so the list scrolls normally from anywhere except the handle.
+  // useSwipeToDelete's handlers stay on the row/card for the horizontal
+  // swipe gesture; they're unaffected since the handle stops propagation.
   function handlePointerMove(e: React.PointerEvent<HTMLLIElement>) {
     if (!isDragging) bind.onPointerMove(e);
   }
@@ -373,14 +423,6 @@ function ShoppingListRow({
     if (!isDragging) bind.onPointerCancel(e);
   }
 
-  // touch-action must be "none" unconditionally, not only once isDragging
-  // is true — dnd-kit needs full control of the touch sequence from the
-  // first pointerdown so a mobile browser's native scroll gesture can't
-  // hijack the touch during the long-press delay window itself (by the
-  // time isDragging flips true it's already too late; the browser will
-  // have claimed the gesture for scrolling and no pointermove events ever
-  // reach dnd-kit's activation-constraint check).
-  //
   // dnd-kit's reflow transform (shifting every OTHER row to make room for
   // the one being dragged) must live on the <li> itself, not an inner
   // child — the <li> is also what carries overflow-hidden (needed to clip
@@ -398,12 +440,11 @@ function ShoppingListRow({
     transform:
       `${CSS.Transform.toString(transform) ?? ""} ${isDragging ? "scale(0.95)" : ""}`.trim(),
     transition,
-    touchAction: "none",
     ...(isDragging ? { opacity: 0.4 } : {}),
   };
 
   const showWarning =
-    item.recent_purchase_days !== undefined &&
+    typeof item.recent_purchase_days === "number" &&
     item.recent_purchase_days <= 7 &&
     !item.warning_dismissed;
 
@@ -435,8 +476,7 @@ function ShoppingListRow({
   return (
     <li
       ref={setNodeRef}
-      {...attributes}
-      onPointerDown={handlePointerDown}
+      onPointerDown={bind.onPointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
@@ -459,6 +499,20 @@ function ShoppingListRow({
         style={swipeStyle}
         className="card-soft relative flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left ring-1 ring-border/60 transition-transform active:scale-[0.98]"
       >
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label="Przesuń produkt"
+          style={{ touchAction: "none" }}
+          className="-m-2 flex shrink-0 cursor-grab touch-none items-center justify-center p-2 text-muted-foreground active:cursor-grabbing"
+          onPointerDown={(e) => {
+            listeners?.["onPointerDown"]?.(e);
+            e.stopPropagation();
+          }}
+        >
+          <GripVertical className="size-5" />
+        </button>
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}

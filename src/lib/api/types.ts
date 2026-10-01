@@ -53,8 +53,10 @@ export interface ShoppingItem {
   amount?: string;
   recipe_title?: string;
   done: boolean;
-  /** days since the item was last purchased, if recently bought */
-  recent_purchase_days?: number;
+  /** days since the item was last purchased, if recently bought. The API
+   * serializes an unset value as `null`, not an omitted key — never compare
+   * against `undefined` alone when reading this field. */
+  recent_purchase_days?: number | null;
   warning_dismissed: boolean;
   created_at: string;
   sort_order: number;
