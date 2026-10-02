@@ -209,6 +209,5 @@ export function createSeedState(): HomeSyncState {
       },
     ],
     tins: [],
-    dismissed_suggestions: [],
   };
 }

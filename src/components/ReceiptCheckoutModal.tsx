@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -39,16 +39,33 @@ export function ReceiptCheckoutModal({
   const [category, setCategory] = useState(DEFAULT_CATEGORY);
   const [lines, setLines] = useState<ReceiptParseLine[]>([]);
   const [purchasedAt, setPurchasedAt] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
 
+  // Reset the form when the dialog opens on a *different* set of bought
+  // items (a new checkout session), but not when it's reopened on the same
+  // set — e.g. an accidental outside-click dismiss shouldn't throw away an
+  // already-parsed receipt (OCR'd store/total/lines) and force the user
+  // back through "capture"/re-upload. Not in deps: `purchases` — see the
+  // completePurchase-mid-submit race this used to cause (it still prepends
+  // to `purchases` before this modal closes, which isn't a reason to reset).
+  const sessionKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!open) return;
+    const sessionKey = boughtItems
+      .map((i) => i.id)
+      .sort()
+      .join(",");
+    if (sessionKey === sessionKeyRef.current) return; // same items — resume where we left off
+    sessionKeyRef.current = sessionKey;
     setStep("capture");
     setStore(purchases[0]?.store ?? "");
     setTotal(String(Math.round(boughtItems.length * ESTIMATE_PER_ITEM * 100) / 100));
     setCategory(purchases[0]?.category ?? DEFAULT_CATEGORY);
     setLines([]);
     setPurchasedAt("");
-  }, [open, purchases, boughtItems.length]);
+    setSubmitting(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, boughtItems]);
 
   function goToManualForm() {
     setStep("form");
@@ -89,9 +106,11 @@ export function ReceiptCheckoutModal({
     setLines((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function handleConfirmManual() {
+  async function handleConfirmManual() {
+    if (submitting) return;
+    setSubmitting(true);
     const parsedTotal = Number(total);
-    completePurchase({
+    await completePurchase({
       store: store.trim() || "Sklep",
       total: Number.isFinite(parsedTotal) ? parsedTotal : 0,
       category: category.trim() || DEFAULT_CATEGORY,
@@ -100,9 +119,11 @@ export function ReceiptCheckoutModal({
     onOpenChange(false);
   }
 
-  function handleConfirmReview() {
+  async function handleConfirmReview() {
+    if (submitting) return;
+    setSubmitting(true);
     const parsedTotal = Number(total);
-    completePurchase({
+    await completePurchase({
       store: store.trim() || "Sklep",
       total: Number.isFinite(parsedTotal) ? parsedTotal : 0,
       category: category.trim() || DEFAULT_CATEGORY,
@@ -212,8 +233,12 @@ export function ReceiptCheckoutModal({
                 ))}
               </div>
             </div>
-            <Button className="h-12 w-full rounded-xl text-base" onClick={handleConfirmReview}>
-              Zapisz zakupy
+            <Button
+              className="h-12 w-full rounded-xl text-base"
+              onClick={() => void handleConfirmReview()}
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="size-5 animate-spin" /> : "Zapisz zakupy"}
             </Button>
           </div>
         )}
@@ -249,8 +274,12 @@ export function ReceiptCheckoutModal({
                 className="h-11 rounded-xl"
               />
             </div>
-            <Button className="h-12 w-full rounded-xl text-base" onClick={handleConfirmManual}>
-              Zapisz zakupy
+            <Button
+              className="h-12 w-full rounded-xl text-base"
+              onClick={() => void handleConfirmManual()}
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="size-5 animate-spin" /> : "Zapisz zakupy"}
             </Button>
           </div>
         )}

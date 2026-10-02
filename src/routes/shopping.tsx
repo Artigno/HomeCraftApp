@@ -40,10 +40,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useSwipeToDelete } from "@/hooks/use-swipe-to-delete";
-import { computeSuggestion } from "@/lib/suggestions";
+import { apiDismissShoppingSuggestion, apiGetShoppingSuggestions } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { useHomeSync } from "@/lib/store";
-import type { ShoppingItem } from "@/lib/api/types";
+import type { ShoppingItem, ShoppingSuggestion } from "@/lib/api/types";
 
 export const Route = createFileRoute("/shopping")({
   head: () => ({
@@ -60,16 +60,34 @@ export const Route = createFileRoute("/shopping")({
 function ShoppingList() {
   const {
     shopping,
-    purchases,
-    dismissed_suggestions,
     addShoppingItems,
     daysSincePurchase,
-    dismissSuggestion,
     updateShoppingItem,
     categorizeShoppingItems,
   } = useHomeSync();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [categorizing, setCategorizing] = useState(false);
+
+  // Server-owned now (GET /shopping-suggestions): bought >2 times, due by
+  // avg interval, not already on the list, not in the server's post-dismiss
+  // cooldown. At most one shown at a time, same as the old client heuristic.
+  const [suggestions, setSuggestions] = useState<ShoppingSuggestion[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void apiGetShoppingSuggestions().then((res) => {
+      if (!cancelled && res.ok) setSuggestions(res.items);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const suggestion = suggestions[0];
+
+  async function handleDismissSuggestion(s: ShoppingSuggestion) {
+    setSuggestions((prev) => prev.filter((i) => i.id !== s.id));
+    const res = await apiDismissShoppingSuggestion(s.id);
+    if (!res.ok) setSuggestions((prev) => [s, ...prev]); // roll back optimistic dismiss
+  }
 
   // Free reorder (drag-and-drop, below) — no more automatic done-to-bottom
   // grouping. toggleShoppingItem still moves an item's sort_order to the
@@ -148,11 +166,6 @@ function ShoppingList() {
 
   const pending = shopping.filter((i) => !i.done).length;
 
-  const suggestion = useMemo(
-    () => computeSuggestion(purchases, shopping, dismissed_suggestions),
-    [purchases, shopping, dismissed_suggestions],
-  );
-
   async function handleCategorize() {
     setCategorizing(true);
     const ok = await categorizeShoppingItems();
@@ -210,18 +223,18 @@ function ShoppingList() {
 
       {suggestion && (
         <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-2xl bg-muted px-4 py-3">
-          <p className="text-sm font-medium">Kończy się {suggestion}? Dodaj do listy</p>
+          <p className="text-sm font-medium">Kończy się {suggestion.name}? Dodaj do listy</p>
           <div className="flex shrink-0 items-center gap-2">
             <Button
               size="sm"
               className="h-8 rounded-full px-3"
-              onClick={() => addByName(suggestion)}
+              onClick={() => addByName(suggestion.name)}
             >
               Dodaj
             </Button>
             <button
               type="button"
-              onClick={() => dismissSuggestion(suggestion)}
+              onClick={() => void handleDismissSuggestion(suggestion)}
               aria-label="Odrzuć sugestię"
               className="flex size-8 items-center justify-center rounded-full text-muted-foreground active:scale-90"
             >

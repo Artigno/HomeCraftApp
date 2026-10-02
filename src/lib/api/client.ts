@@ -8,7 +8,7 @@
  */
 
 import { clearAuthToken, getAuthToken, isAuthenticated } from "../auth";
-import type { ReceiptParseResult, ShoppingItem } from "./types";
+import type { ReceiptParseResult, ShoppingItem, ShoppingSuggestion } from "./types";
 
 const API_BASE =
   (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.homesync.local/api";
@@ -119,43 +119,51 @@ export function enqueue(
   return request;
 }
 
-let flushing = false;
+// Concurrent callers (the fire-and-forget kick from enqueue() and an
+// explicit `await flushQueue()` from a caller that wants to know when the
+// in-flight request actually lands) share this promise instead of the
+// second caller short-circuiting on a "flushing" flag and resolving before
+// the real network round-trip finishes.
+let flushPromise: Promise<void> | null = null;
 
-export async function flushQueue(): Promise<void> {
-  if (!isBrowser() || flushing || !navigator.onLine) return;
-  flushing = true;
-  try {
-    let queue = readQueue();
-    while (queue.length > 0) {
-      const next = queue[0];
-      if (!next) break;
-      try {
-        const res = await fetch(`${API_BASE}${next.path}`, {
-          method: next.method,
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            ...authHeaders(),
-          },
-          ...(next.body ? { body: JSON.stringify(next.body) } : {}),
-          signal: AbortSignal.timeout(10_000),
-        });
-        if (res.status === 401) {
-          handleUnauthorized();
-          break; // don't dead-letter or retry — the queue is retried after re-login
+export function flushQueue(): Promise<void> {
+  if (!isBrowser() || !navigator.onLine) return Promise.resolve();
+  if (flushPromise) return flushPromise;
+  flushPromise = (async () => {
+    try {
+      let queue = readQueue();
+      while (queue.length > 0) {
+        const next = queue[0];
+        if (!next) break;
+        try {
+          const res = await fetch(`${API_BASE}${next.path}`, {
+            method: next.method,
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...authHeaders(),
+            },
+            ...(next.body ? { body: JSON.stringify(next.body) } : {}),
+            signal: AbortSignal.timeout(10_000),
+          });
+          if (res.status === 401) {
+            handleUnauthorized();
+            break; // don't dead-letter or retry — the queue is retried after re-login
+          }
+          if (await checkPending(res)) break; // stay queued — retried once the owner approves
+          if (!res.ok && res.status >= 500) break; // retry later
+          if (!res.ok) recordFailed(next); // 4xx — backend rejected it, dead-letter instead of silent drop
+        } catch {
+          break; // still offline / backend down -> keep the queue intact
         }
-        if (await checkPending(res)) break; // stay queued — retried once the owner approves
-        if (!res.ok && res.status >= 500) break; // retry later
-        if (!res.ok) recordFailed(next); // 4xx — backend rejected it, dead-letter instead of silent drop
-      } catch {
-        break; // still offline / backend down -> keep the queue intact
+        queue = readQueue().slice(1);
+        writeQueue(queue);
       }
-      queue = readQueue().slice(1);
-      writeQueue(queue);
+    } finally {
+      flushPromise = null;
     }
-  } finally {
-    flushing = false;
-  }
+  })();
+  return flushPromise;
 }
 
 export async function apiGet<T>(path: string, fallback: T): Promise<T> {
@@ -296,6 +304,44 @@ export async function apiCategorizeShoppingItems(): Promise<
   });
   if (!res.ok) return { ok: false, status: res.status };
   return { ok: true, items: (await res.json()) as ShoppingItem[] };
+}
+
+/** GET /shopping-suggestions — synchronous, caller needs the list to render the banner. */
+export async function apiGetShoppingSuggestions(): Promise<
+  { ok: true; items: ShoppingSuggestion[] } | { ok: false; status: number }
+> {
+  if (!isBrowser() || !navigator.onLine) return { ok: false, status: 0 };
+  try {
+    const res = await fetch(`${API_BASE}/shopping-suggestions`, {
+      headers: { Accept: "application/json", ...authHeaders() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (res.status === 401) {
+      handleUnauthorized();
+      return { ok: false, status: res.status };
+    }
+    if (!res.ok) return { ok: false, status: res.status };
+    return { ok: true, items: (await res.json()) as ShoppingSuggestion[] };
+  } catch {
+    return { ok: false, status: 0 };
+  }
+}
+
+/** POST /shopping-suggestions/{id}/dismiss — synchronous; the server owns the
+ * dismissal cooldown (suppressed until bought 2 more times), nothing to
+ * track client-side beyond optimistically hiding it from this render. */
+export async function apiDismissShoppingSuggestion(id: number): Promise<{ ok: boolean }> {
+  if (!isBrowser() || !navigator.onLine) return { ok: false };
+  try {
+    const res = await fetch(`${API_BASE}/shopping-suggestions/${id}/dismiss`, {
+      method: "POST",
+      headers: { Accept: "application/json", ...authHeaders() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    return { ok: res.ok };
+  } catch {
+    return { ok: false };
+  }
 }
 
 /** DELETE /household/members/{id} — synchronous, owner-only, keeps the member's data. */

@@ -134,6 +134,19 @@ export type AccentColor = "green" | "amber" | "red" | "blue" | "violet" | "teal"
 
 export type TaskStatus = "good" | "warning" | "overdue";
 
+/** GET /shopping-suggestions — server-computed restock candidates (bought
+ * >2 times, due by avg interval, not on the active list, not in the
+ * server's post-dismissal cooldown). Replaces the old client-side
+ * computeSuggestion() heuristic entirely; the server owns dismissal state. */
+export interface ShoppingSuggestion {
+  id: number;
+  name: string;
+  purchase_count: number;
+  last_purchased_at: string;
+  avg_interval_days: number;
+  days_since_last_purchase: number;
+}
+
 export interface HomeSyncState {
   tasks: MaintenanceTask[];
   logs: MaintenanceLog[];
@@ -141,5 +154,4 @@ export interface HomeSyncState {
   shopping: ShoppingItem[];
   purchases: Purchase[];
   tins: Tin[];
-  dismissed_suggestions: string[];
 }

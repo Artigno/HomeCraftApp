@@ -47,8 +47,7 @@ interface StoreValue extends HomeSyncState {
     category: string;
     lines?: PurchaseLine[];
     purchased_at?: string;
-  }) => void;
-  dismissSuggestion: (name: string) => void;
+  }) => Promise<void>;
   /** AI-reorders pending items into aisle-category order; server-authoritative,
    * no optimistic local sort. Returns false (list left untouched) on failure. */
   categorizeShoppingItems: () => Promise<boolean>;
@@ -119,7 +118,32 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setState((s) => ({ ...s, tasks, recipes, shopping, purchases, tins, logs: [] }));
+    setState((s) => {
+      // /shopping-items excludes done items server-side, but a checked-off
+      // item is still mid-purchase on this device until completePurchase()
+      // runs — keep it visible until then, or it vanishes on the next
+      // focus/visibility sync before the user ever confirms the receipt.
+      const fetchedIds = new Set(shopping.map((i) => i.id));
+      const inProgress = s.shopping.filter((i) => i.done && !fetchedIds.has(i.id));
+      // A toggle's PATCH can still be in flight (queued, not yet sent) when
+      // this GET lands — the backend then still reports done:false for an
+      // item the user already checked off locally. Trust the local done
+      // flag in that window instead of overwriting it with the stale
+      // server value, or "Zakończ zakupy" goes right back to disabled.
+      const localDoneIds = new Set(s.shopping.filter((i) => i.done).map((i) => i.id));
+      const reconciled = shopping.map((i) =>
+        localDoneIds.has(i.id) && !i.done ? { ...i, done: true } : i,
+      );
+      return {
+        ...s,
+        tasks,
+        recipes,
+        shopping: [...reconciled, ...inProgress],
+        purchases,
+        tins,
+        logs: [],
+      };
+    });
   }, []);
 
   useEffect(() => {
@@ -266,33 +290,35 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         }));
         enqueue("PATCH", `/shopping-items/${id}`, patch);
       },
-      completePurchase: ({ store, total, category, lines, purchased_at }) => {
+      completePurchase: async ({ store, total, category, lines, purchased_at }) => {
         haptic(25);
-        setState((s) => {
-          const bought = s.shopping.filter((i) => i.done);
-          const purchase: Purchase = {
-            id: crypto.randomUUID(),
-            store,
-            category,
-            total,
-            purchased_at: purchased_at ?? new Date().toISOString(),
-            lines:
-              lines ??
-              bought.map((i) => ({
-                name: i.name,
-                price: Math.round((total / Math.max(bought.length, 1)) * 100) / 100,
-              })),
-          };
-          enqueue("POST", "/receipts/process", purchase);
-          return {
-            ...s,
-            shopping: s.shopping.filter((i) => !i.done),
-            purchases: [purchase, ...s.purchases],
-          };
-        });
+        const bought = state.shopping.filter((i) => i.done);
+        const purchase: Purchase = {
+          id: crypto.randomUUID(),
+          store,
+          category,
+          total,
+          purchased_at: purchased_at ?? new Date().toISOString(),
+          lines:
+            lines ??
+            bought.map((i) => ({
+              name: i.name,
+              price: Math.round((total / Math.max(bought.length, 1)) * 100) / 100,
+            })),
+        };
+        setState((s) => ({
+          ...s,
+          shopping: s.shopping.filter((i) => !i.done),
+          purchases: [purchase, ...s.purchases],
+        }));
+        // enqueue() runs outside the setState updater (which React defers to
+        // the next render, not this tick) so the request is actually queued
+        // before flushQueue() looks for it — otherwise flushQueue() sees an
+        // empty queue and resolves instantly, closing the modal with no
+        // loader while the real request still fires fire-and-forget later.
+        enqueue("POST", "/receipts/process", purchase);
+        await flushQueue();
       },
-      dismissSuggestion: (name) =>
-        setState((s) => ({ ...s, dismissed_suggestions: [...s.dismissed_suggestions, name] })),
       categorizeShoppingItems: async () => {
         const result = await apiCategorizeShoppingItems();
         if (!result.ok) return false;
