@@ -48,6 +48,10 @@ interface StoreValue extends HomeSyncState {
     lines?: PurchaseLine[];
     purchased_at?: string;
   }) => Promise<void>;
+  /** Clears checked-off items from the list without recording a purchase —
+   * for items already accounted for in the budget some other way (e.g. a
+   * separate receipt scan), where completePurchase() would double-count. */
+  discardCompletedShoppingItems: () => void;
   /** AI-reorders pending items into aisle-category order; server-authoritative,
    * no optimistic local sort. Returns false (list left untouched) on failure. */
   categorizeShoppingItems: () => Promise<boolean>;
@@ -123,8 +127,19 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       // item is still mid-purchase on this device until completePurchase()
       // runs — keep it visible until then, or it vanishes on the next
       // focus/visibility sync before the user ever confirms the receipt.
+      // That retention only holds for a few hours, though: if the item is
+      // still "done" and missing from the backend long after it was
+      // checked off, completePurchase() never happened (and never will —
+      // the user bought it, marked it done, and moved on) and the item
+      // would otherwise sit in local storage forever, reappearing on every
+      // sync. Past the window, drop it instead of keeping a zombie entry.
+      const INPROGRESS_TTL_MS = 6 * 60 * 60 * 1000;
       const fetchedIds = new Set(shopping.map((i) => i.id));
-      const inProgress = s.shopping.filter((i) => i.done && !fetchedIds.has(i.id));
+      const inProgress = s.shopping.filter((i) => {
+        if (!i.done || fetchedIds.has(i.id)) return false;
+        const markedAt = i.local_marked_done_at ? Date.parse(i.local_marked_done_at) : NaN;
+        return Number.isFinite(markedAt) && Date.now() - markedAt < INPROGRESS_TTL_MS;
+      });
       // A toggle's PATCH can still be in flight (queued, not yet sent) when
       // this GET lands — the backend then still reports done:false for an
       // item the user already checked off locally. Trust the local done
@@ -266,9 +281,16 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
           enqueue("PATCH", `/shopping-items/${id}`, { sort_order: nextOrder });
           return {
             ...s,
-            shopping: s.shopping.map((i) =>
-              i.id === id ? { ...i, done: !i.done, sort_order: nextOrder } : i,
-            ),
+            shopping: s.shopping.map((i) => {
+              if (i.id !== id) return i;
+              const { local_marked_done_at: _drop, ...rest } = i;
+              return {
+                ...rest,
+                done: !i.done,
+                sort_order: nextOrder,
+                ...(!i.done ? { local_marked_done_at: new Date().toISOString() } : {}),
+              };
+            }),
           };
         });
       },
@@ -318,6 +340,9 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         // loader while the real request still fires fire-and-forget later.
         enqueue("POST", "/receipts/process", purchase);
         await flushQueue();
+      },
+      discardCompletedShoppingItems: () => {
+        setState((s) => ({ ...s, shopping: s.shopping.filter((i) => !i.done) }));
       },
       categorizeShoppingItems: async () => {
         const result = await apiCategorizeShoppingItems();

@@ -64,6 +64,7 @@ function ShoppingList() {
     daysSincePurchase,
     updateShoppingItem,
     categorizeShoppingItems,
+    discardCompletedShoppingItems,
   } = useHomeSync();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [categorizing, setCategorizing] = useState(false);
@@ -272,7 +273,7 @@ function ShoppingList() {
       </DndContext>
 
       {shopping.length > 0 && (
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-3 space-y-2">
           <Button
             className="h-12 w-full rounded-xl text-base"
             disabled={!shopping.some((i) => i.done)}
@@ -280,6 +281,19 @@ function ShoppingList() {
           >
             Zakończ zakupy
           </Button>
+          {shopping.some((i) => i.done) && (
+            <button
+              type="button"
+              className="w-full text-center text-xs text-muted-foreground underline-offset-2 active:underline"
+              onClick={() => {
+                if (window.confirm("Usunąć zaznaczone produkty bez zapisu do budżetu?")) {
+                  discardCompletedShoppingItems();
+                }
+              }}
+            >
+              Wyczyść zaznaczone bez zapisu do budżetu
+            </button>
+          )}
         </div>
       )}
 

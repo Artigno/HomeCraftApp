@@ -60,6 +60,10 @@ export interface ShoppingItem {
   warning_dismissed: boolean;
   created_at: string;
   sort_order: number;
+  /** Local-only, never sent to the API: when this device toggled the item
+   * done. Lets syncFromBackend tell "still mid-checkout on this device"
+   * apart from "done forever, stuck in local cache" — see store.tsx. */
+  local_marked_done_at?: string;
 }
 
 export interface PurchaseLine {
