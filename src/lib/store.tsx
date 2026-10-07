@@ -8,7 +8,16 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { apiCategorizeShoppingItems, apiGet, enqueue, flushQueue, readQueue } from "./api/client";
+import {
+  apiCategorizeShoppingItems,
+  apiGet,
+  apiGetShoppingItems,
+  enqueue,
+  flushQueue,
+  readQueue,
+  readShoppingCursor,
+  writeShoppingCursor,
+} from "./api/client";
 import type {
   HomeSyncState,
   MaintenanceTask,
@@ -23,6 +32,12 @@ import { isAuthenticated } from "./auth";
 import { createSeedState } from "./seed";
 
 const STORAGE_KEY = "homesync.state.v1";
+
+// since-absent and since-epoch are NOT interchangeable for /shopping-items —
+// omitting `since` keeps the legacy done=false-only filter server-side, so a
+// full resync (including done items) must still pass an explicit, far-past
+// `since` value rather than skip the param.
+const EPOCH_SINCE = "1970-01-01T00:00:00Z";
 
 interface StoreValue extends HomeSyncState {
   hydrated: boolean;
@@ -92,12 +107,14 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
   // server (not a locally-generated guess) — without this, every reinstall
   // re-seeds with fresh random ids that can diverge from what's already
   // there, and a second device never sees the first device's data at all.
-  const syncFromBackend = useCallback(async () => {
+  const syncFromBackend = useCallback(async (opts?: { incremental?: boolean }) => {
     if (!isAuthenticated()) return;
-    const [tasks, recipes, shopping, purchases, tins] = await Promise.all([
+    const incremental = opts?.incremental ?? false;
+    const since = incremental ? (readShoppingCursor() ?? EPOCH_SINCE) : EPOCH_SINCE;
+    const [tasks, recipes, shoppingResult, purchases, tins] = await Promise.all([
       apiGet<MaintenanceTask[] | null>("/maintenance-tasks", null),
       apiGet<Recipe[] | null>("/recipes", null),
-      apiGet<ShoppingItem[] | null>("/shopping-items", null),
+      apiGetShoppingItems(since),
       apiGet<Purchase[] | null>("/purchases", null),
       apiGet<Tin[] | null>("/tins", null),
     ]);
@@ -106,16 +123,28 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
     if (
       tasks === null ||
       recipes === null ||
-      shopping === null ||
+      shoppingResult === null ||
       purchases === null ||
       tins === null
     ) {
       return;
     }
 
+    if (!shoppingResult.ok) {
+      if (shoppingResult.invalidSince) {
+        // Corrupted/invalid stored cursor — clear it and retry once as a
+        // full epoch-anchored fetch within the same sync pass.
+        writeShoppingCursor(null);
+        await syncFromBackend({ incremental: false });
+      }
+      // Non-cursor failure: keep local state, next natural sync trigger retries.
+      return;
+    }
+    const shopping = shoppingResult.items;
+
     const backendHasData =
       tasks.length + recipes.length + shopping.length + purchases.length + tins.length > 0;
-    if (!backendHasData) {
+    if (!backendHasData && !incremental) {
       // Brand-new account with nothing on the backend yet: seed it once,
       // exactly like a fresh device would, so there's demo content either way.
       if (localSeedRef.current) pushSeed(localSeedRef.current);
@@ -123,42 +152,52 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
     }
 
     setState((s) => {
-      // /shopping-items excludes done items server-side, but a checked-off
-      // item is still mid-purchase on this device until completePurchase()
-      // runs — keep it visible until then, or it vanishes on the next
-      // focus/visibility sync before the user ever confirms the receipt.
-      // That retention only holds for a few hours, though: if the item is
-      // still "done" and missing from the backend long after it was
-      // checked off, completePurchase() never happened (and never will —
-      // the user bought it, marked it done, and moved on) and the item
-      // would otherwise sit in local storage forever, reappearing on every
-      // sync. Past the window, drop it instead of keeping a zombie entry.
-      const INPROGRESS_TTL_MS = 6 * 60 * 60 * 1000;
-      const fetchedIds = new Set(shopping.map((i) => i.id));
-      const inProgress = s.shopping.filter((i) => {
-        if (!i.done || fetchedIds.has(i.id)) return false;
-        const markedAt = i.local_marked_done_at ? Date.parse(i.local_marked_done_at) : NaN;
-        return Number.isFinite(markedAt) && Date.now() - markedAt < INPROGRESS_TTL_MS;
-      });
-      // A toggle's PATCH can still be in flight (queued, not yet sent) when
-      // this GET lands — the backend then still reports done:false for an
-      // item the user already checked off locally. Trust the local done
-      // flag in that window instead of overwriting it with the stale
-      // server value, or "Zakończ zakupy" goes right back to disabled.
-      const localDoneIds = new Set(s.shopping.filter((i) => i.done).map((i) => i.id));
-      const reconciled = shopping.map((i) =>
-        localDoneIds.has(i.id) && !i.done ? { ...i, done: true } : i,
+      // A toggle's PATCH can still be queued (not yet flushed) when this GET
+      // lands — the backend then reports whichever `done` value preceded
+      // that toggle. Trust the pre-sync local value for any id with a
+      // pending toggle in the queue, in either direction, rather than only
+      // one-directionally preferring done:true as before.
+      const pendingToggleIds = new Set(
+        readQueue()
+          .map((r) =>
+            r.method === "PATCH" ? /^\/shopping-items\/([^/]+)\/toggle$/.exec(r.path) : null,
+          )
+          .filter((m): m is RegExpExecArray => m !== null)
+          .map((m) => m[1]!),
       );
+      const preSyncById = new Map(s.shopping.map((i) => [i.id, i]));
+      const applyQueueOverride = (item: ShoppingItem): ShoppingItem => {
+        if (!pendingToggleIds.has(item.id)) return item;
+        const pre = preSyncById.get(item.id);
+        return pre ? { ...item, done: pre.done } : item;
+      };
+
+      const nextShopping = incremental
+        ? (() => {
+            const byId = new Map(s.shopping.map((i) => [i.id, i]));
+            for (const item of shopping) byId.set(item.id, applyQueueOverride(item));
+            return [...byId.values()];
+          })()
+        : shopping.map(applyQueueOverride);
+
       return {
         ...s,
         tasks,
         recipes,
-        shopping: [...reconciled, ...inProgress],
+        shopping: nextShopping,
         purchases,
         tins,
         logs: [],
       };
     });
+
+    if (shopping.length > 0) {
+      const maxUpdatedAt = shopping.reduce(
+        (max, i) => (i.updated_at > max ? i.updated_at : max),
+        shopping[0]!.updated_at,
+      );
+      writeShoppingCursor(maxUpdatedAt);
+    }
   }, []);
 
   useEffect(() => {
@@ -187,7 +226,7 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
     // alone covers PWA resume; "focus" additionally covers desktop
     // multi-window/multi-tab switching, which visibilitychange can miss.
     const onReturnToApp = () => {
-      if (document.visibilityState === "visible") void syncFromBackend();
+      if (document.visibilityState === "visible") void syncFromBackend({ incremental: true });
     };
     document.addEventListener("visibilitychange", onReturnToApp);
     window.addEventListener("focus", onReturnToApp);

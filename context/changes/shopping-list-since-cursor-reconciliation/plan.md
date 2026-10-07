@@ -420,15 +420,15 @@ full resync).
 
 #### Automated
 
-- [x] 1.1 Typecheck passes
-- [x] 1.2 Lint passes
+- [x] 1.1 Typecheck passes — 1d16e6e
+- [x] 1.2 Lint passes — 1d16e6e
 
 ### Phase 2: Rewire syncFromBackend — epoch-anchored full resync + incremental merge
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes
-- [ ] 2.2 Lint passes
+- [x] 2.1 Typecheck passes
+- [x] 2.2 Lint passes
 
 #### Manual
 
