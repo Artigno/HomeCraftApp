@@ -137,9 +137,9 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 const TABS = [
-  { to: "/", label: "Dom", Icon: LayoutGrid },
-  { to: "/cookbook", label: "Przepisy", Icon: ChefHat },
   { to: "/shopping", label: "Zakupy", Icon: ShoppingCart },
+  { to: "/cookbook", label: "Przepisy", Icon: ChefHat },
+  { to: "/", label: "Dom", Icon: LayoutGrid },
   { to: "/insights", label: "Budżet", Icon: PieChart },
 ] as const;
 
