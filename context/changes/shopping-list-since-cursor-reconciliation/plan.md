@@ -427,24 +427,24 @@ full resync).
 
 #### Automated
 
-- [x] 2.1 Typecheck passes
-- [x] 2.2 Lint passes
+- [x] 2.1 Typecheck passes — b36d596
+- [x] 2.2 Lint passes — b36d596
 
 #### Manual
 
-- [ ] 2.3 Toggle done persists through a full (mount) resync, no TTL window needed
-- [ ] 2.4 Toggle done persists through an incremental (visibility/focus) resync, no flicker
-- [ ] 2.5 Delete still removes an item on reload (full resync drops by absence)
-- [ ] 2.6 Toggle-while-offline-then-return-to-app holds done state through the incremental sync (queue-override)
-- [ ] 2.7 Toggle PATCH body confirmed as `{ "done": boolean }`
+- [x] 2.3 Toggle done persists through a full (mount) resync, no TTL window needed — b36d596
+- [x] 2.4 Toggle done persists through an incremental (visibility/focus) resync, no flicker — b36d596
+- [x] 2.5 Delete still removes an item on reload (full resync drops by absence) — b36d596
+- [x] 2.6 Toggle-while-offline-then-return-to-app holds done state through the incremental sync (queue-override) — b36d596
+- [x] 2.7 Toggle PATCH body confirmed as `{ "done": boolean }` — b36d596
 
 ### Phase 3: Remove the dead TTL workaround
 
 #### Automated
 
-- [ ] 3.1 Typecheck passes
-- [ ] 3.2 Lint passes
-- [ ] 3.3 `grep -rn "local_marked_done_at" src/` returns no results
+- [x] 3.1 Typecheck passes
+- [x] 3.2 Lint passes
+- [x] 3.3 `grep -rn "local_marked_done_at" src/` returns no results
 
 #### Manual
 

@@ -323,16 +323,9 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
           enqueue("PATCH", `/shopping-items/${id}`, { sort_order: nextOrder });
           return {
             ...s,
-            shopping: s.shopping.map((i) => {
-              if (i.id !== id) return i;
-              const { local_marked_done_at: _drop, ...rest } = i;
-              return {
-                ...rest,
-                done: !i.done,
-                sort_order: nextOrder,
-                ...(!i.done ? { local_marked_done_at: new Date().toISOString() } : {}),
-              };
-            }),
+            shopping: s.shopping.map((i) =>
+              i.id === id ? { ...i, done: !i.done, sort_order: nextOrder } : i,
+            ),
           };
         });
       },
