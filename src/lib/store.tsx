@@ -277,7 +277,8 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
           // otherwise unchecking an item snaps it back to its old spot in
           // the pending list instead of landing at the bottom.
           const nextOrder = Math.max(0, ...s.shopping.map((i) => i.sort_order)) + 1;
-          enqueue("PATCH", `/shopping-items/${id}/toggle`);
+          const current = s.shopping.find((i) => i.id === id);
+          enqueue("PATCH", `/shopping-items/${id}/toggle`, { done: !current?.done });
           enqueue("PATCH", `/shopping-items/${id}`, { sort_order: nextOrder });
           return {
             ...s,
