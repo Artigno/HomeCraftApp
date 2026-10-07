@@ -172,6 +172,7 @@ export async function apiGet<T>(path: string, fallback: T): Promise<T> {
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       headers: { Accept: "application/json", ...authHeaders() },
+      signal: AbortSignal.timeout(10_000),
     });
     if (res.status === 401) {
       handleUnauthorized();
@@ -216,6 +217,7 @@ export async function apiGetShoppingItems(
   try {
     const res = await fetch(`${API_BASE}/shopping-items?since=${encodeURIComponent(since)}`, {
       headers: { Accept: "application/json", ...authHeaders() },
+      signal: AbortSignal.timeout(10_000),
     });
     if (res.status === 401) {
       handleUnauthorized();

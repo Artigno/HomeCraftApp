@@ -107,98 +107,128 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
   // server (not a locally-generated guess) — without this, every reinstall
   // re-seeds with fresh random ids that can diverge from what's already
   // there, and a second device never sees the first device's data at all.
-  const syncFromBackend = useCallback(async (opts?: { incremental?: boolean }) => {
-    if (!isAuthenticated()) return;
-    const incremental = opts?.incremental ?? false;
-    const since = incremental ? (readShoppingCursor() ?? EPOCH_SINCE) : EPOCH_SINCE;
-    const [tasks, recipes, shoppingResult, purchases, tins] = await Promise.all([
-      apiGet<MaintenanceTask[] | null>("/maintenance-tasks", null),
-      apiGet<Recipe[] | null>("/recipes", null),
-      apiGetShoppingItems(since),
-      apiGet<Purchase[] | null>("/purchases", null),
-      apiGet<Tin[] | null>("/tins", null),
-    ]);
-    // null means the request failed (offline, 401, ...) — apiGet already
-    // handles those; keep whatever's local and let the queue sync later.
-    if (
-      tasks === null ||
-      recipes === null ||
-      shoppingResult === null ||
-      purchases === null ||
-      tins === null
-    ) {
-      return;
-    }
-
-    if (!shoppingResult.ok) {
-      if (shoppingResult.invalidSince) {
-        // Corrupted/invalid stored cursor — clear it and retry once as a
-        // full epoch-anchored fetch within the same sync pass.
-        writeShoppingCursor(null);
-        await syncFromBackend({ incremental: false });
+  const syncFromBackend = useCallback(
+    async (opts?: { incremental?: boolean; retriedAfterInvalidSince?: boolean }) => {
+      if (!isAuthenticated()) return;
+      const incremental = opts?.incremental ?? false;
+      const since = incremental ? (readShoppingCursor() ?? EPOCH_SINCE) : EPOCH_SINCE;
+      const [tasks, recipes, shoppingResult, purchases, tins] = await Promise.all([
+        apiGet<MaintenanceTask[] | null>("/maintenance-tasks", null),
+        apiGet<Recipe[] | null>("/recipes", null),
+        apiGetShoppingItems(since),
+        apiGet<Purchase[] | null>("/purchases", null),
+        apiGet<Tin[] | null>("/tins", null),
+      ]);
+      // null means the request failed (offline, 401, ...) — apiGet already
+      // handles those; keep whatever's local and let the queue sync later.
+      if (
+        tasks === null ||
+        recipes === null ||
+        shoppingResult === null ||
+        purchases === null ||
+        tins === null
+      ) {
+        return;
       }
-      // Non-cursor failure: keep local state, next natural sync trigger retries.
-      return;
-    }
-    const shopping = shoppingResult.items;
 
-    const backendHasData =
-      tasks.length + recipes.length + shopping.length + purchases.length + tins.length > 0;
-    if (!backendHasData && !incremental) {
-      // Brand-new account with nothing on the backend yet: seed it once,
-      // exactly like a fresh device would, so there's demo content either way.
-      if (localSeedRef.current) pushSeed(localSeedRef.current);
-      return;
-    }
+      if (!shoppingResult.ok) {
+        if (shoppingResult.invalidSince && !opts?.retriedAfterInvalidSince) {
+          // Corrupted/invalid stored cursor — clear it and retry once as a
+          // full epoch-anchored fetch within the same sync pass. The
+          // retriedAfterInvalidSince flag caps this at a single retry even if
+          // the epoch constant itself somehow gets rejected too.
+          writeShoppingCursor(null);
+          await syncFromBackend({ incremental: false, retriedAfterInvalidSince: true });
+        }
+        // Non-cursor failure, or already retried once: keep local state, next
+        // natural sync trigger retries.
+        return;
+      }
+      const shopping = shoppingResult.items;
 
-    setState((s) => {
-      // A toggle's PATCH can still be queued (not yet flushed) when this GET
-      // lands — the backend then reports whichever `done` value preceded
-      // that toggle. Trust the pre-sync local value for any id with a
-      // pending toggle in the queue, in either direction, rather than only
-      // one-directionally preferring done:true as before.
-      const pendingToggleIds = new Set(
-        readQueue()
-          .map((r) =>
-            r.method === "PATCH" ? /^\/shopping-items\/([^/]+)\/toggle$/.exec(r.path) : null,
-          )
-          .filter((m): m is RegExpExecArray => m !== null)
-          .map((m) => m[1]!),
-      );
-      const preSyncById = new Map(s.shopping.map((i) => [i.id, i]));
-      const applyQueueOverride = (item: ShoppingItem): ShoppingItem => {
-        if (!pendingToggleIds.has(item.id)) return item;
-        const pre = preSyncById.get(item.id);
-        return pre ? { ...item, done: pre.done } : item;
-      };
+      const backendHasData =
+        tasks.length + recipes.length + shopping.length + purchases.length + tins.length > 0;
+      if (!backendHasData && !incremental) {
+        // Brand-new account with nothing on the backend yet: seed it once,
+        // exactly like a fresh device would, so there's demo content either way.
+        if (localSeedRef.current) pushSeed(localSeedRef.current);
+        return;
+      }
 
-      const nextShopping = incremental
-        ? (() => {
-            const byId = new Map(s.shopping.map((i) => [i.id, i]));
-            for (const item of shopping) byId.set(item.id, applyQueueOverride(item));
-            return [...byId.values()];
-          })()
-        : shopping.map(applyQueueOverride);
+      setState((s) => {
+        // A toggle's PATCHes (the toggle itself + the sort_order move that
+        // rides along with it, see toggleShoppingItem) can still be queued
+        // (not yet flushed) when this GET lands — the backend then reports
+        // whichever done/sort_order preceded that toggle. Trust the
+        // pre-sync local value for any id with either PATCH still pending,
+        // rather than only one-directionally preferring done:true as before.
+        const pendingIds = new Set(
+          readQueue()
+            .map((r) =>
+              r.method === "PATCH" ? /^\/shopping-items\/([^/]+)(?:\/toggle)?$/.exec(r.path) : null,
+            )
+            .filter((m): m is RegExpExecArray => m !== null)
+            .map((m) => m[1]!),
+        );
+        const preSyncById = new Map(s.shopping.map((i) => [i.id, i]));
+        const applyQueueOverride = (item: ShoppingItem): ShoppingItem => {
+          if (!pendingIds.has(item.id)) return item;
+          const pre = preSyncById.get(item.id);
+          return pre ? { ...item, done: pre.done, sort_order: pre.sort_order } : item;
+        };
 
-      return {
-        ...s,
-        tasks,
-        recipes,
-        shopping: nextShopping,
-        purchases,
-        tins,
-        logs: [],
-      };
-    });
+        const nextShopping = incremental
+          ? (() => {
+              // Upsert-only: a since-cursor response has no deletion markers,
+              // so a backend-side delete isn't purged from local state until
+              // the next full (mount/login) resync replaces the list wholesale.
+              const byId = new Map(s.shopping.map((i) => [i.id, i]));
+              for (const item of shopping) byId.set(item.id, applyQueueOverride(item));
+              return [...byId.values()];
+            })()
+          : (() => {
+              const base = shopping.map(applyQueueOverride);
+              // A full resync otherwise replaces s.shopping wholesale — a
+              // newly-added item whose /shopping-items/batch POST hasn't
+              // flushed yet would vanish until that create lands server-side.
+              // Carry forward any local item still covered by a pending
+              // batch-create and absent from the fetched set.
+              const fetchedIds = new Set(shopping.map((i) => i.id));
+              const pendingCreateIds = new Set(
+                readQueue()
+                  .filter((r) => r.method === "POST" && r.path === "/shopping-items/batch")
+                  .flatMap((r) => {
+                    const body = r.body as { items?: ShoppingItem[] } | undefined;
+                    return (body?.items ?? []).map((i) => i.id);
+                  }),
+              );
+              const unflushedLocalCreates = s.shopping.filter(
+                (i) => pendingCreateIds.has(i.id) && !fetchedIds.has(i.id),
+              );
+              return [...base, ...unflushedLocalCreates];
+            })();
 
-    if (shopping.length > 0) {
-      const maxUpdatedAt = shopping.reduce(
-        (max, i) => (i.updated_at > max ? i.updated_at : max),
-        shopping[0]!.updated_at,
-      );
-      writeShoppingCursor(maxUpdatedAt);
-    }
-  }, []);
+        return {
+          ...s,
+          tasks,
+          recipes,
+          shopping: nextShopping,
+          purchases,
+          tins,
+          logs: [],
+        };
+      });
+
+      if (shopping.length > 0) {
+        const maxUpdatedAt = shopping.reduce(
+          (max, i) => (i.updated_at > max ? i.updated_at : max),
+          shopping[0]!.updated_at,
+        );
+        writeShoppingCursor(maxUpdatedAt);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     let raw: string | null = null;

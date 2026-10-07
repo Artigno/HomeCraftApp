@@ -1,7 +1,7 @@
 ---
 change_id: shopping-list-since-cursor-reconciliation
 title: Wire up since-cursor reconciliation, drop local TTL workaround
-status: implemented
+status: impl_reviewed
 created: 2026-10-07
 updated: 2026-10-07
 archived_at: null
