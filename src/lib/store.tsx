@@ -32,7 +32,7 @@ interface StoreValue extends HomeSyncState {
   removeTask: (taskId: string) => void;
   updateTask: (taskId: string, patch: Partial<Omit<MaintenanceTask, "id">>) => void;
   addShoppingItems: (
-    items: Array<Omit<ShoppingItem, "id" | "created_at" | "done" | "sort_order">>,
+    items: Array<Omit<ShoppingItem, "id" | "created_at" | "updated_at" | "done" | "sort_order">>,
   ) => void;
   toggleShoppingItem: (id: string) => void;
   removeShoppingItem: (id: string) => void;
@@ -258,11 +258,13 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         haptic();
         setState((s) => {
           const baseOrder = Math.max(0, ...s.shopping.map((i) => i.sort_order)) + 1;
+          const now = new Date().toISOString();
           const created: ShoppingItem[] = items.map((i, index) => ({
             ...i,
             id: crypto.randomUUID(),
             done: false,
-            created_at: new Date().toISOString(),
+            created_at: now,
+            updated_at: now,
             sort_order: baseOrder + index,
           }));
           enqueue("POST", "/shopping-items/batch", { items: created });

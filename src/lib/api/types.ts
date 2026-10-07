@@ -59,6 +59,7 @@ export interface ShoppingItem {
   recent_purchase_days?: number | null;
   warning_dismissed: boolean;
   created_at: string;
+  updated_at: string;
   sort_order: number;
   /** Local-only, never sent to the API: when this device toggled the item
    * done. Lets syncFromBackend tell "still mid-checkout on this device"

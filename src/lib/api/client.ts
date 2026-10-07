@@ -15,6 +15,7 @@ const API_BASE =
 
 const QUEUE_KEY = "homesync.request-queue";
 const FAILED_QUEUE_KEY = "homesync.request-queue.failed";
+const SHOPPING_CURSOR_KEY = "homesync.shopping-cursor";
 
 export interface QueuedRequest {
   id: string;
@@ -181,6 +182,51 @@ export async function apiGet<T>(path: string, fallback: T): Promise<T> {
     return (await res.json()) as T;
   } catch {
     return fallback;
+  }
+}
+
+/** Persists the shopping-items sync cursor across reloads, same idiom as readQueue/writeQueue. */
+export function readShoppingCursor(): string | null {
+  if (!isBrowser()) return null;
+  try {
+    return window.localStorage.getItem(SHOPPING_CURSOR_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function writeShoppingCursor(cursor: string | null): void {
+  if (!isBrowser()) return;
+  if (cursor === null) {
+    window.localStorage.removeItem(SHOPPING_CURSOR_KEY);
+  } else {
+    window.localStorage.setItem(SHOPPING_CURSOR_KEY, cursor);
+  }
+}
+
+/**
+ * GET /shopping-items?since=... — unlike apiGet, distinguishes a 422
+ * (invalid `since`) from other failures so the caller can decide whether to
+ * drop the cursor and retry.
+ */
+export async function apiGetShoppingItems(
+  since: string,
+): Promise<{ ok: true; items: ShoppingItem[] } | { ok: false; invalidSince: boolean } | null> {
+  if (!isBrowser() || !navigator.onLine) return null;
+  try {
+    const res = await fetch(`${API_BASE}/shopping-items?since=${encodeURIComponent(since)}`, {
+      headers: { Accept: "application/json", ...authHeaders() },
+    });
+    if (res.status === 401) {
+      handleUnauthorized();
+      return null;
+    }
+    if (await checkPending(res)) return null;
+    if (res.status === 422) return { ok: false, invalidSince: true };
+    if (!res.ok) return { ok: false, invalidSince: false };
+    return { ok: true, items: (await res.json()) as ShoppingItem[] };
+  } catch {
+    return null;
   }
 }
 

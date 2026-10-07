@@ -139,6 +139,7 @@ export function createSeedState(): HomeSyncState {
         done: false,
         warning_dismissed: false,
         created_at: daysAgo(0),
+        updated_at: daysAgo(0),
         sort_order: 0,
       },
       {
@@ -148,6 +149,7 @@ export function createSeedState(): HomeSyncState {
         done: false,
         warning_dismissed: false,
         created_at: daysAgo(1),
+        updated_at: daysAgo(1),
         sort_order: 1,
       },
     ],
