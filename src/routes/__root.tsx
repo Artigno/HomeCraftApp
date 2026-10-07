@@ -158,6 +158,7 @@ function TabBar() {
               label === null && "justify-center",
             )}
             activeProps={{ className: "text-foreground" }}
+            aria-label={label ?? "Konto"}
           >
             <Icon className={label === null ? "size-7" : "size-5"} />
             {label}
