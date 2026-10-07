@@ -214,12 +214,12 @@ None — no data model or persisted state involved.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes
-- [x] 2.2 Lint passes
+- [x] 2.1 Typecheck passes — 5eeade8
+- [x] 2.2 Lint passes — 5eeade8
 
 #### Manual
 
-- [x] 2.3 Profil button appears between Przepisy and Dom, icon-only, on every tab-bar route
-- [x] 2.4 Tapping Profil navigates to /account
-- [x] 2.5 Profil shows active-state styling while on /account
-- [x] 2.6 Dom header no longer shows old UserCircle icon; Edytuj/+ buttons still work
+- [x] 2.3 Profil button appears between Przepisy and Dom, icon-only, on every tab-bar route — 5eeade8
+- [x] 2.4 Tapping Profil navigates to /account — 5eeade8
+- [x] 2.5 Profil shows active-state styling while on /account — 5eeade8
+- [x] 2.6 Dom header no longer shows old UserCircle icon; Edytuj/+ buttons still work — 5eeade8
