@@ -9,7 +9,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { LayoutGrid, ChefHat, ShoppingCart, PieChart } from "lucide-react";
+import { LayoutGrid, ChefHat, ShoppingCart, PieChart, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { HomeSyncProvider } from "@/lib/store";
@@ -139,6 +139,7 @@ function RootShell({ children }: { children: ReactNode }) {
 const TABS = [
   { to: "/shopping", label: "Zakupy", Icon: ShoppingCart },
   { to: "/cookbook", label: "Przepisy", Icon: ChefHat },
+  { to: "/account", label: null, Icon: UserCircle },
   { to: "/", label: "Dom", Icon: LayoutGrid },
   { to: "/insights", label: "Budżet", Icon: PieChart },
 ] as const;
@@ -152,10 +153,13 @@ function TabBar() {
             key={to}
             to={to}
             activeOptions={{ exact: to === "/" }}
-            className="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors active:scale-95"
+            className={cn(
+              "flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors active:scale-95",
+              label === null && "justify-center",
+            )}
             activeProps={{ className: "text-foreground" }}
           >
-            <Icon className="size-5" />
+            <Icon className={label === null ? "size-7" : "size-5"} />
             {label}
           </Link>
         ))}

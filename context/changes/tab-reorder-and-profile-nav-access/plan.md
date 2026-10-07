@@ -202,24 +202,24 @@ None — no data model or persisted state involved.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes
-- [x] 1.2 Lint passes
+- [x] 1.1 Typecheck passes — 8008996
+- [x] 1.2 Lint passes — 8008996
 
 #### Manual
 
-- [x] 1.3 Tabs render in target order (Zakupy, Przepisy, Dom, Budżet)
-- [x] 1.4 Each tab navigates to its existing route unchanged
+- [x] 1.3 Tabs render in target order (Zakupy, Przepisy, Dom, Budżet) — 8008996
+- [x] 1.4 Each tab navigates to its existing route unchanged — 8008996
 
 ### Phase 2: Add profile nav button, remove old header link
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes
-- [ ] 2.2 Lint passes
+- [x] 2.1 Typecheck passes
+- [x] 2.2 Lint passes
 
 #### Manual
 
-- [ ] 2.3 Profil button appears between Przepisy and Dom, icon-only, on every tab-bar route
-- [ ] 2.4 Tapping Profil navigates to /account
-- [ ] 2.5 Profil shows active-state styling while on /account
-- [ ] 2.6 Dom header no longer shows old UserCircle icon; Edytuj/+ buttons still work
+- [x] 2.3 Profil button appears between Przepisy and Dom, icon-only, on every tab-bar route
+- [x] 2.4 Tapping Profil navigates to /account
+- [x] 2.5 Profil shows active-state styling while on /account
+- [x] 2.6 Dom header no longer shows old UserCircle icon; Edytuj/+ buttons still work

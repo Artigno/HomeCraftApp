@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Calendar, Check, Pencil, Plus, Trash2, UserCircle } from "lucide-react";
+import { Calendar, Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { TaskWizard } from "@/components/TaskWizard";
@@ -67,13 +67,6 @@ function Dashboard() {
         }
         action={
           <div className="flex gap-2 pt-1">
-            <Link
-              to="/account"
-              className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              aria-label="Konto"
-            >
-              <UserCircle className="size-5" />
-            </Link>
             <Button
               variant={editMode ? "default" : "secondary"}
               size="sm"
