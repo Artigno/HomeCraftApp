@@ -1,10 +1,10 @@
 ---
 change_id: tab-reorder-and-profile-nav-access
 title: Reorder main tabs and add profile access from every tab (sprint-1 #1, #8)
-status: impl_reviewed
+status: archived
 created: 2026-10-07
 updated: 2026-10-07
-archived_at: null
+archived_at: 2026-10-07T08:53:14Z
 ---
 
 ## Notes
