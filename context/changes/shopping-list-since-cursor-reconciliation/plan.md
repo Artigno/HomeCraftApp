@@ -442,11 +442,11 @@ full resync).
 
 #### Automated
 
-- [x] 3.1 Typecheck passes
-- [x] 3.2 Lint passes
-- [x] 3.3 `grep -rn "local_marked_done_at" src/` returns no results
+- [x] 3.1 Typecheck passes — d24ee4a
+- [x] 3.2 Lint passes — d24ee4a
+- [x] 3.3 `grep -rn "local_marked_done_at" src/` returns no results — d24ee4a
 
 #### Manual
 
-- [ ] 3.4 Full regression pass: add/toggle/reorder/delete/complete-purchase all still work
-- [ ] 3.5 Ping homecraftapi-30 to confirm landed, so they can close their plan's final manual check
+- [x] 3.4 Full regression pass: add/toggle/reorder/delete/complete-purchase all still work — d24ee4a
+- [x] 3.5 Ping homecraftapi-30 to confirm landed, so they can close their plan's final manual check — d24ee4a
