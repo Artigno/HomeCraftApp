@@ -343,13 +343,16 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       toggleShoppingItem: (id) => {
         haptic();
         setState((s) => {
-          // Move the toggled item to the end of its new group (not just a
-          // resort into wherever its old sort_order happens to place it) —
-          // otherwise unchecking an item snaps it back to its old spot in
-          // the pending list instead of landing at the bottom.
-          const nextOrder = Math.max(0, ...s.shopping.map((i) => i.sort_order)) + 1;
           const current = s.shopping.find((i) => i.id === id);
-          enqueue("PATCH", `/shopping-items/${id}/toggle`, { done: !current?.done });
+          const nextDone = !current?.done;
+          // Move the toggled item to the end of its new group (pending when
+          // unchecking, done when checking) — not the end of the whole list,
+          // so unchecking lands among pending items instead of past every
+          // already-done item.
+          const nextOrder =
+            Math.max(0, ...s.shopping.filter((i) => i.done === nextDone).map((i) => i.sort_order)) +
+            1;
+          enqueue("PATCH", `/shopping-items/${id}/toggle`, { done: nextDone });
           enqueue("PATCH", `/shopping-items/${id}`, { sort_order: nextOrder });
           return {
             ...s,
