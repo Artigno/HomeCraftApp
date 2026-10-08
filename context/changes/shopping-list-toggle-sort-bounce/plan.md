@@ -361,22 +361,22 @@ computation fix. No `ShoppingItem` schema change.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes
-- [x] 2.2 Lint passes
+- [x] 2.1 Typecheck passes — c070c69
+- [x] 2.2 Lint passes — c070c69
 
 ### Phase 3: Relocate checkout actions into the header menu
 
 #### Automated
 
-- [ ] 3.1 Typecheck passes
-- [ ] 3.2 Lint passes
+- [x] 3.1 Typecheck passes
+- [x] 3.2 Lint passes
 
 #### Manual
 
-- [ ] 3.3 Check an item — disappears from pending, collapsed accordion count increments
-- [ ] 3.4 Expand accordion — checked item visible at bottom of done list
-- [ ] 3.5 Uncheck from expanded accordion — reappears in pending, accordion stays expanded
-- [ ] 3.6 Drag-reorder pending items works; done items not draggable
-- [ ] 3.7 Header menu has "Zakończ zakupy" + "Wyczyść zaznaczone", correct disabled state, both work
-- [ ] 3.8 All-done empty-pending state shows new subtitle copy
-- [ ] 3.9 Full regression: add/edit-name/swipe-delete/warning-badge on both pending and done rows
+- [x] 3.3 Check an item — disappears from pending, collapsed accordion count increments
+- [x] 3.4 Expand accordion — checked item visible at bottom of done list
+- [x] 3.5 Uncheck from expanded accordion — reappears in pending, accordion stays expanded
+- [x] 3.6 Drag-reorder pending items works; done items not draggable
+- [x] 3.7 Header menu has "Zakończ zakupy" + "Wyczyść zaznaczone", correct disabled state, both work
+- [x] 3.8 All-done empty-pending state shows new subtitle copy
+- [x] 3.9 Full regression: add/edit-name/swipe-delete/warning-badge on both pending and done rows

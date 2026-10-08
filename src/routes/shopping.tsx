@@ -233,6 +233,23 @@ function ShoppingList() {
                 <Sparkles className="size-4" />
                 Kategoryzuj AI
               </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!shopping.some((i) => i.done)}
+                onSelect={() => setCheckoutOpen(true)}
+              >
+                Zakończ zakupy
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!shopping.some((i) => i.done)}
+                className="text-destructive"
+                onSelect={() => {
+                  if (window.confirm("Usunąć zaznaczone produkty bez zapisu do budżetu?")) {
+                    discardCompletedShoppingItems();
+                  }
+                }}
+              >
+                Wyczyść zaznaczone bez zapisu do budżetu
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         }
@@ -307,31 +324,6 @@ function ShoppingList() {
             </ul>
           </CollapsibleContent>
         </Collapsible>
-      )}
-
-      {shopping.length > 0 && (
-        <div className="px-4 pb-3 space-y-2">
-          <Button
-            className="h-12 w-full rounded-xl text-base"
-            disabled={!shopping.some((i) => i.done)}
-            onClick={() => setCheckoutOpen(true)}
-          >
-            Zakończ zakupy
-          </Button>
-          {shopping.some((i) => i.done) && (
-            <button
-              type="button"
-              className="w-full text-center text-xs text-muted-foreground underline-offset-2 active:underline"
-              onClick={() => {
-                if (window.confirm("Usunąć zaznaczone produkty bez zapisu do budżetu?")) {
-                  discardCompletedShoppingItems();
-                }
-              }}
-            >
-              Wyczyść zaznaczone bez zapisu do budżetu
-            </button>
-          )}
-        </div>
       )}
 
       <ReceiptCheckoutModal
