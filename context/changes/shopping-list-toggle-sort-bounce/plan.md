@@ -354,15 +354,15 @@ computation fix. No `ShoppingItem` schema change.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes
-- [x] 1.2 Lint passes
+- [x] 1.1 Typecheck passes — c7c9dee
+- [x] 1.2 Lint passes — c7c9dee
 
 ### Phase 2: Collapsible done-items section
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes
-- [ ] 2.2 Lint passes
+- [x] 2.1 Typecheck passes
+- [x] 2.2 Lint passes
 
 ### Phase 3: Relocate checkout actions into the header menu
 

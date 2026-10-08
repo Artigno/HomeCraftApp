@@ -20,6 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   Check,
+  ChevronDown,
   GripVertical,
   Loader2,
   MoreVertical,
@@ -32,6 +33,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { ReceiptCheckoutModal } from "@/components/ReceiptCheckoutModal";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -90,15 +92,23 @@ function ShoppingList() {
     if (!res.ok) setSuggestions((prev) => [s, ...prev]); // roll back optimistic dismiss
   }
 
-  // Free reorder (drag-and-drop, below) — no more automatic done-to-bottom
-  // grouping. toggleShoppingItem still moves an item's sort_order to the
-  // end of the list on toggle, so the freeze mechanism right below is
-  // still needed even without grouping — see the plan's "Correction found
-  // during Phase 5's manual verification" note.
+  // Grouping is done/pending split via the accordion below, not an
+  // automatic done-to-bottom sort within one flat list. `sorted` here only
+  // ever holds pending items — done items render separately in the
+  // collapsed-by-default accordion, un-draggable. toggleShoppingItem still
+  // moves an item's sort_order to the end of its new group on toggle, so
+  // the freeze mechanism right below is still needed.
   const sorted = useMemo(
-    () => [...shopping].sort((a, b) => a.sort_order - b.sort_order),
+    () => [...shopping].filter((i) => !i.done).sort((a, b) => a.sort_order - b.sort_order),
     [shopping],
   );
+
+  const doneSorted = useMemo(
+    () => [...shopping].filter((i) => i.done).sort((a, b) => a.sort_order - b.sort_order),
+    [shopping],
+  );
+
+  const [doneExpanded, setDoneExpanded] = useState(false);
 
   // Freeze the rendered order briefly after a toggle so a fast second tap
   // lands on the item the user is looking at, not one that just slid up to
@@ -195,7 +205,13 @@ function ShoppingList() {
     <div>
       <PageHeader
         title="Zakupy"
-        subtitle={pending > 0 ? `${pending} rzeczy do kupienia` : "Lista jest pusta"}
+        subtitle={
+          pending > 0
+            ? `${pending} rzeczy do kupienia`
+            : shopping.length > 0
+              ? "Wszystko zaznaczone ✅"
+              : "Lista jest pusta"
+        }
         action={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -271,6 +287,27 @@ function ShoppingList() {
           )}
         </DragOverlay>
       </DndContext>
+
+      {doneSorted.length > 0 && (
+        <Collapsible open={doneExpanded} onOpenChange={setDoneExpanded} className="px-4 pb-3">
+          <CollapsibleTrigger
+            aria-expanded={doneExpanded}
+            className="flex w-full items-center justify-between rounded-xl px-2 py-2 text-left text-sm font-medium text-muted-foreground"
+          >
+            Zakończone ({doneSorted.length})
+            <ChevronDown
+              className={cn("size-4 transition-transform", doneExpanded && "rotate-180")}
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ul className="space-y-2 pt-2">
+              {doneSorted.map((item) => (
+                <DoneShoppingListRow key={item.id} item={item} />
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       {shopping.length > 0 && (
         <div className="px-4 pb-3 space-y-2">
@@ -548,6 +585,176 @@ function ShoppingListRow({
               onToggleFreeze();
               toggleShoppingItem(item.id);
             }
+          }}
+          aria-label={item.done ? "Odznacz produkt" : "Zaznacz produkt"}
+          className="-m-2 flex shrink-0 items-center justify-center p-2"
+        >
+          <span
+            className={cn(
+              "flex size-5 items-center justify-center rounded-full border-2",
+              item.done ? "border-primary bg-primary" : "border-muted-foreground/40",
+            )}
+          />
+        </button>
+        <span className="min-w-0 flex-1">
+          {editing ? (
+            <Input
+              autoFocus
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitEdit();
+                } else if (e.key === "Escape") {
+                  setEditing(false);
+                }
+              }}
+              onBlur={commitEdit}
+              className="h-8 rounded-lg px-2 text-[15px]"
+            />
+          ) : (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={startEdit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  startEdit();
+                }
+              }}
+              className="block w-full text-left"
+            >
+              <span
+                className={cn(
+                  "block text-[15px] font-medium",
+                  item.done && "text-muted-foreground line-through",
+                )}
+              >
+                {item.name}
+                {item.amount && (
+                  <span className="ml-1.5 text-sm text-muted-foreground">{item.amount}</span>
+                )}
+              </span>
+            </span>
+          )}
+          {item.recipe_title && (
+            <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              Przepis: {item.recipe_title}
+            </span>
+          )}
+        </span>
+
+        {showWarning && (
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--status-warning)]/14 px-2 py-1 text-[11px] font-semibold text-[var(--status-warning)]">
+            kupiono {item.recent_purchase_days} dni temu
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                removeShoppingItem(item.id);
+              }}
+              aria-label="Usuń produkt"
+              className="flex size-4 items-center justify-center"
+            >
+              <Trash2 className="size-3" />
+            </button>
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                dismissWarning(item.id);
+              }}
+              className="flex items-center gap-0.5"
+            >
+              <Check className="size-3" /> Zatwierdź
+            </button>
+          </span>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/** Done-item row: same checkbox/toggle, inline-name-edit, swipe-to-delete,
+ * and warning-badge behavior as `ShoppingListRow`, but with no `useSortable`
+ * call, no drag handle, and no drag-related styling — done items are never
+ * part of the pending `SortableContext` and need none of that plumbing. */
+function DoneShoppingListRow({ item }: { item: ShoppingItem }) {
+  const { toggleShoppingItem, removeShoppingItem, dismissWarning, updateShoppingItem } =
+    useHomeSync();
+  const {
+    bind,
+    style: swipeStyle,
+    isRevealed,
+    reset,
+    consumeDragFlag,
+  } = useSwipeToDelete({
+    onDelete: () => removeShoppingItem(item.id),
+  });
+  const [editing, setEditing] = useState(false);
+  const [draftName, setDraftName] = useState(item.name);
+
+  const showWarning =
+    typeof item.recent_purchase_days === "number" &&
+    item.recent_purchase_days <= 7 &&
+    !item.warning_dismissed;
+
+  function guardedTap(): boolean {
+    if (consumeDragFlag()) return false;
+    if (isRevealed) {
+      reset();
+      return false;
+    }
+    return true;
+  }
+
+  function startEdit() {
+    if (!guardedTap()) return;
+    setDraftName(item.name);
+    setEditing(true);
+  }
+
+  function commitEdit() {
+    const trimmed = draftName.trim();
+    if (trimmed && trimmed !== item.name) {
+      updateShoppingItem(item.id, { name: trimmed });
+    }
+    setEditing(false);
+  }
+
+  return (
+    <li
+      onPointerDown={bind.onPointerDown}
+      onPointerMove={bind.onPointerMove}
+      onPointerUp={bind.onPointerUp}
+      onPointerCancel={bind.onPointerCancel}
+      className="relative overflow-hidden rounded-2xl"
+    >
+      <div className="absolute inset-y-0 right-0 flex w-16 items-center justify-center rounded-2xl bg-[var(--accent-red)] text-white">
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => removeShoppingItem(item.id)}
+          aria-label="Usuń produkt"
+          className="flex size-full items-center justify-center"
+        >
+          <Trash2 className="size-5" />
+        </button>
+      </div>
+
+      <div
+        style={swipeStyle}
+        className="card-soft relative flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left ring-1 ring-border/60 transition-transform active:scale-[0.98]"
+      >
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => {
+            if (guardedTap()) toggleShoppingItem(item.id);
           }}
           aria-label={item.done ? "Odznacz produkt" : "Zaznacz produkt"}
           className="-m-2 flex shrink-0 items-center justify-center p-2"
