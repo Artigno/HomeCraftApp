@@ -1,7 +1,7 @@
 ---
 change_id: habit-tile-accidental-tap
 title: Fix accidental-tap logging on habit tiles (sprint-1 #3)
-status: implemented
+status: impl_reviewed
 created: 2026-10-08
 updated: 2026-10-08
 archived_at: null
