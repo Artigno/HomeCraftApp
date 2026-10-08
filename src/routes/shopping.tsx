@@ -284,7 +284,10 @@ function ShoppingList() {
             <Button
               size="sm"
               className="h-8 rounded-full px-3"
-              onClick={() => addByName(suggestion.name)}
+              onClick={() => {
+                addByName(suggestion.name);
+                void handleDismissSuggestion(suggestion);
+              }}
             >
               Dodaj
             </Button>

@@ -325,42 +325,48 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       },
       addShoppingItems: (items) => {
         haptic();
-        setState((s) => {
-          const baseOrder = Math.max(0, ...s.shopping.map((i) => i.sort_order)) + 1;
-          const now = new Date().toISOString();
-          const created: ShoppingItem[] = items.map((i, index) => ({
-            ...i,
-            id: crypto.randomUUID(),
-            done: false,
-            created_at: now,
-            updated_at: now,
-            sort_order: baseOrder + index,
-          }));
-          enqueue("POST", "/shopping-items/batch", { items: created });
-          return { ...s, shopping: [...s.shopping, ...created] };
-        });
+        // id generation + enqueue() must run exactly once per call, so they
+        // live outside the setState updater — React may invoke a functional
+        // updater more than once per update (a dev-mode purity check), and
+        // anything with a side effect inside it would then fire twice. Same
+        // convention every other method in this store already follows (see
+        // the note on completePurchase below).
+        const baseOrder = Math.max(0, ...state.shopping.map((i) => i.sort_order)) + 1;
+        const nowIso = new Date().toISOString();
+        const created: ShoppingItem[] = items.map((i, index) => ({
+          ...i,
+          id: crypto.randomUUID(),
+          done: false,
+          created_at: nowIso,
+          updated_at: nowIso,
+          sort_order: baseOrder + index,
+        }));
+        enqueue("POST", "/shopping-items/batch", { items: created });
+        setState((s) => ({ ...s, shopping: [...s.shopping, ...created] }));
       },
       toggleShoppingItem: (id) => {
         haptic();
-        setState((s) => {
-          const current = s.shopping.find((i) => i.id === id);
-          const nextDone = !current?.done;
-          // Move the toggled item to the end of its new group (pending when
-          // unchecking, done when checking) — not the end of the whole list,
-          // so unchecking lands among pending items instead of past every
-          // already-done item.
-          const nextOrder =
-            Math.max(0, ...s.shopping.filter((i) => i.done === nextDone).map((i) => i.sort_order)) +
-            1;
-          enqueue("PATCH", `/shopping-items/${id}/toggle`, { done: nextDone });
-          enqueue("PATCH", `/shopping-items/${id}`, { sort_order: nextOrder });
-          return {
-            ...s,
-            shopping: s.shopping.map((i) =>
-              i.id === id ? { ...i, done: !i.done, sort_order: nextOrder } : i,
-            ),
-          };
-        });
+        // enqueue() must run exactly once per call — see addShoppingItems
+        // above for why this lives outside the setState updater.
+        const current = state.shopping.find((i) => i.id === id);
+        const nextDone = !current?.done;
+        // Move the toggled item to the end of its new group (pending when
+        // unchecking, done when checking) — not the end of the whole list,
+        // so unchecking lands among pending items instead of past every
+        // already-done item.
+        const nextOrder =
+          Math.max(
+            0,
+            ...state.shopping.filter((i) => i.done === nextDone).map((i) => i.sort_order),
+          ) + 1;
+        enqueue("PATCH", `/shopping-items/${id}/toggle`, { done: nextDone });
+        enqueue("PATCH", `/shopping-items/${id}`, { sort_order: nextOrder });
+        setState((s) => ({
+          ...s,
+          shopping: s.shopping.map((i) =>
+            i.id === id ? { ...i, done: nextDone, sort_order: nextOrder } : i,
+          ),
+        }));
       },
       removeShoppingItem: (id) => {
         setState((s) => ({ ...s, shopping: s.shopping.filter((i) => i.id !== id) }));
