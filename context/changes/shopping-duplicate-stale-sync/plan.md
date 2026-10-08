@@ -293,27 +293,27 @@ None — client-side only, no schema or data changes.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes
-- [x] 1.2 Lint passes
+- [x] 1.1 Typecheck passes — 4c62522
+- [x] 1.2 Lint passes — 4c62522
 
 #### Manual
 
-- [x] 1.3 Tap "Dodaj" — item added, banner disappears immediately without touching "X"
-- [x] 1.4 Double-tap "Dodaj" quickly — only one item added
-- [x] 1.5 Tap "X" on a suggestion — still dismisses as before, no regression
-- [x] 1.6 Offline tap "Dodaj" then reconnect — no duplicate item from this flow regardless of dismiss success/failure
+- [x] 1.3 Tap "Dodaj" — item added, banner disappears immediately without touching "X" — 4c62522
+- [x] 1.4 Double-tap "Dodaj" quickly — only one item added — 4c62522
+- [x] 1.5 Tap "X" on a suggestion — still dismisses as before, no regression — 4c62522
+- [x] 1.6 Offline tap "Dodaj" then reconnect — no duplicate item from this flow regardless of dismiss success/failure — 4c62522
 
 ### Phase 2: Move side effects out of the setState updater
 
 #### Automated
 
-- [x] 2.1 Typecheck passes
-- [x] 2.2 Lint passes
+- [x] 2.1 Typecheck passes — 4c62522
+- [x] 2.2 Lint passes — 4c62522
 
 #### Manual
 
-- [x] 2.3 Add an item once (type name, Enter), then immediate hard refresh — exactly one item (the user's exact repro)
-- [x] 2.4 Toggle an item once — single transition, no double-PATCH in Network tab
-- [x] 2.5 Add two different items back-to-back — both appear, distinct ids, no collision
-- [x] 2.6 Toggle then untoggle — both transitions apply correctly
-- [x] 2.7 Full regression: add → hard refresh → toggle → hard refresh — no duplicate at any step
+- [x] 2.3 Add an item once (type name, Enter), then immediate hard refresh — exactly one item (the user's exact repro) — 4c62522
+- [x] 2.4 Toggle an item once — single transition, no double-PATCH in Network tab — 4c62522
+- [x] 2.5 Add two different items back-to-back — both appear, distinct ids, no collision — 4c62522
+- [x] 2.6 Toggle then untoggle — both transitions apply correctly — 4c62522
+- [x] 2.7 Full regression: add → hard refresh → toggle → hard refresh — no duplicate at any step — 4c62522

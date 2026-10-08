@@ -1,7 +1,7 @@
 ---
 change_id: shopping-duplicate-stale-sync
 title: Shopping list item duplicates on refresh; server sync only happens on reload
-status: implementing
+status: implemented
 created: 2026-10-08
 updated: 2026-10-08
 archived_at: null
