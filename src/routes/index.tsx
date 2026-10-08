@@ -4,6 +4,16 @@ import { Calendar, Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { TaskWizard } from "@/components/TaskWizard";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { getIcon } from "@/lib/icons";
 import { accentBg, statusStyles } from "@/lib/accent";
@@ -38,6 +48,7 @@ function Dashboard() {
   const [editingTask, setEditingTask] = useState<MaintenanceTask | null>(null);
   const [dateEditingTask, setDateEditingTask] = useState<MaintenanceTask | null>(null);
   const [actionsTask, setActionsTask] = useState<MaintenanceTask | null>(null);
+  const [confirmTask, setConfirmTask] = useState<MaintenanceTask | null>(null);
 
   // Most urgent (highest days-elapsed ÷ frequency ratio, i.e. closest to or
   // past due — red) first, freshest (just logged) last. Sorting descending
@@ -90,6 +101,7 @@ function Dashboard() {
             editMode={editMode}
             onRemove={() => removeTask(task.id)}
             onOpenActions={() => setActionsTask(task)}
+            onRequestConfirm={() => setConfirmTask(task)}
           />
         ))}
 
@@ -104,8 +116,7 @@ function Dashboard() {
       </div>
 
       <p className="flex items-center justify-center gap-1.5 px-4 py-6 text-xs text-muted-foreground">
-        <Check className="size-3.5" /> Tapnij kafelek, aby zalogować wykonanie · przytrzymaj, aby
-        edytować
+        <Check className="size-3.5" /> Tapnij, aby potwierdzić wykonanie · przytrzymaj, aby edytować
       </p>
 
       <TaskWizard
@@ -167,6 +178,33 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      <AlertDialog
+        open={!!confirmTask}
+        onOpenChange={(o) => {
+          if (!o) setConfirmTask(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmTask?.name}</AlertDialogTitle>
+            <AlertDialogDescription>Zalogować wykonanie tego zadania?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!confirmTask) return;
+                logTask(confirmTask.id);
+                toast.success("Zapisano wykonanie", { description: confirmTask.name });
+                setConfirmTask(null);
+              }}
+            >
+              Potwierdź
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -176,13 +214,14 @@ function TaskTile({
   editMode,
   onRemove,
   onOpenActions,
+  onRequestConfirm,
 }: {
   task: MaintenanceTask;
   editMode: boolean;
   onRemove: () => void;
   onOpenActions: () => void;
+  onRequestConfirm: () => void;
 }) {
-  const { logTask } = useHomeSync();
   const status = taskStatus(task);
   const s = statusStyles(status);
   const Icon = getIcon(task.icon);
@@ -197,8 +236,7 @@ function TaskTile({
       onClick={() => {
         if (consumeLongPress()) return;
         if (editMode) return;
-        logTask(task.id);
-        toast.success("Zapisano wykonanie", { description: task.name });
+        onRequestConfirm();
       }}
       className={cn(
         "card-soft relative flex min-h-36 flex-col justify-between rounded-3xl bg-card p-4 text-left ring-1 transition-transform active:scale-[0.97]",
