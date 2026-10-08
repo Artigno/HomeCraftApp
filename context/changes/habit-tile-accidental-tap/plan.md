@@ -176,14 +176,14 @@ that the manual testing was successful before proceeding.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npx tsc --noEmit`
-- [x] 1.2 Linting passes: `npm run lint`
+- [x] 1.1 Type checking passes: `npx tsc --noEmit` — 3ed3ec6
+- [x] 1.2 Linting passes: `npm run lint` — 3ed3ec6
 
 #### Manual
 
-- [x] 1.3 Tap (not long-press, not edit mode) opens confirm dialog, no log written yet
-- [x] 1.4 Confirm logs the task and shows success toast
-- [x] 1.5 Cancel/dismiss leaves task state unchanged
-- [x] 1.6 Long-press still opens edit-actions sheet, unaffected
-- [x] 1.7 Edit mode tap still no-ops (only remove-icon works), unaffected
-- [x] 1.8 Footer hint text matches new tap behavior
+- [x] 1.3 Tap (not long-press, not edit mode) opens confirm dialog, no log written yet — 3ed3ec6
+- [x] 1.4 Confirm logs the task and shows success toast — 3ed3ec6
+- [x] 1.5 Cancel/dismiss leaves task state unchanged — 3ed3ec6
+- [x] 1.6 Long-press still opens edit-actions sheet, unaffected — 3ed3ec6
+- [x] 1.7 Edit mode tap still no-ops (only remove-icon works), unaffected — 3ed3ec6
+- [x] 1.8 Footer hint text matches new tap behavior — 3ed3ec6
