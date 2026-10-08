@@ -1,7 +1,7 @@
 ---
 change_id: shopping-list-toggle-sort-bounce
 title: Shopping list sort order bounces on toggle
-status: implementing
+status: implemented
 created: 2026-10-07
 updated: 2026-10-08
 archived_at: null
