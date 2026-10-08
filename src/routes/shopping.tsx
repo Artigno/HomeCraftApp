@@ -113,7 +113,9 @@ function ShoppingList() {
   // Freeze the rendered order briefly after a toggle so a fast second tap
   // lands on the item the user is looking at, not one that just slid up to
   // take its place — the toggle itself still applies instantly (checkbox
-  // state), only the visual reflow is delayed.
+  // state), only the visual reflow is delayed. Same mechanism, duplicated
+  // for the done group below — unchecking a done item reflows the
+  // remaining done rows exactly the way toggling a pending item does.
   const [frozenOrder, setFrozenOrder] = useState<string[] | null>(null);
   const freezeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -125,9 +127,21 @@ function ShoppingList() {
     freezeTimer.current = setTimeout(() => setFrozenOrder(null), 400);
   }
 
+  const [doneFrozenOrder, setDoneFrozenOrder] = useState<string[] | null>(null);
+  const doneFreezeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  function freezeDoneOrderBriefly() {
+    if (doneFrozenOrder === null) {
+      setDoneFrozenOrder(doneSorted.map((i) => i.id));
+    }
+    if (doneFreezeTimer.current) clearTimeout(doneFreezeTimer.current);
+    doneFreezeTimer.current = setTimeout(() => setDoneFrozenOrder(null), 400);
+  }
+
   useEffect(() => {
     return () => {
       if (freezeTimer.current) clearTimeout(freezeTimer.current);
+      if (doneFreezeTimer.current) clearTimeout(doneFreezeTimer.current);
     };
   }, []);
 
@@ -136,6 +150,14 @@ function ShoppingList() {
     const byId = new Map(shopping.map((i) => [i.id, i]));
     return frozenOrder.map((id) => byId.get(id)).filter((i): i is ShoppingItem => i !== undefined);
   }, [frozenOrder, sorted, shopping]);
+
+  const doneDisplayOrder = useMemo(() => {
+    if (!doneFrozenOrder) return doneSorted;
+    const byId = new Map(shopping.map((i) => [i.id, i]));
+    return doneFrozenOrder
+      .map((id) => byId.get(id))
+      .filter((i): i is ShoppingItem => i !== undefined);
+  }, [doneFrozenOrder, doneSorted, shopping]);
 
   const sensors = useSensors(
     // tolerance bumped from the plan's original 5px — real finger tremor
@@ -318,8 +340,12 @@ function ShoppingList() {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <ul className="space-y-2 pt-2">
-              {doneSorted.map((item) => (
-                <DoneShoppingListRow key={item.id} item={item} />
+              {doneDisplayOrder.map((item) => (
+                <DoneShoppingListRow
+                  key={item.id}
+                  item={item}
+                  onToggleFreeze={freezeDoneOrderBriefly}
+                />
               ))}
             </ul>
           </CollapsibleContent>
@@ -675,7 +701,13 @@ function ShoppingListRow({
  * and warning-badge behavior as `ShoppingListRow`, but with no `useSortable`
  * call, no drag handle, and no drag-related styling — done items are never
  * part of the pending `SortableContext` and need none of that plumbing. */
-function DoneShoppingListRow({ item }: { item: ShoppingItem }) {
+function DoneShoppingListRow({
+  item,
+  onToggleFreeze,
+}: {
+  item: ShoppingItem;
+  onToggleFreeze: () => void;
+}) {
   const { toggleShoppingItem, removeShoppingItem, dismissWarning, updateShoppingItem } =
     useHomeSync();
   const {
@@ -746,7 +778,10 @@ function DoneShoppingListRow({ item }: { item: ShoppingItem }) {
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => {
-            if (guardedTap()) toggleShoppingItem(item.id);
+            if (guardedTap()) {
+              onToggleFreeze();
+              toggleShoppingItem(item.id);
+            }
           }}
           aria-label={item.done ? "Odznacz produkt" : "Zaznacz produkt"}
           className="-m-2 flex shrink-0 items-center justify-center p-2"
