@@ -385,7 +385,7 @@ backfill required.
 
 #### Manual
 
-- [ ] 1.3 Live `GET /shopping-items?since=1970-01-01T00:00:00Z` against
+- [x] 1.3 Live `GET /shopping-items?since=1970-01-01T00:00:00Z` against
       deployed post-fix backend returns 422
 
 ### Phase 2: Frontend full-resync fix (HomeCraftApp)
