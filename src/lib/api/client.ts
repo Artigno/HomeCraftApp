@@ -127,6 +127,14 @@ export function enqueue(
 // the real network round-trip finishes.
 let flushPromise: Promise<void> | null = null;
 
+// Independent hard bound on a single queue iteration's fetch, so a hang
+// that bypasses AbortSignal.timeout (e.g. a suspended backgrounded tab)
+// can't wedge flushPromise forever. Kept above the per-fetch 10s abort
+// timeout so the normal abort path gets first chance to fire.
+const FLUSH_WATCHDOG_MS = 15_000;
+
+class FlushWatchdogTimeout extends Error {}
+
 export function flushQueue(): Promise<void> {
   if (!isBrowser() || !navigator.onLine) return Promise.resolve();
   if (flushPromise) return flushPromise;
@@ -137,16 +145,21 @@ export function flushQueue(): Promise<void> {
         const next = queue[0];
         if (!next) break;
         try {
-          const res = await fetch(`${API_BASE}${next.path}`, {
-            method: next.method,
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              ...authHeaders(),
-            },
-            ...(next.body ? { body: JSON.stringify(next.body) } : {}),
-            signal: AbortSignal.timeout(10_000),
-          });
+          const res = await Promise.race([
+            fetch(`${API_BASE}${next.path}`, {
+              method: next.method,
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                ...authHeaders(),
+              },
+              ...(next.body ? { body: JSON.stringify(next.body) } : {}),
+              signal: AbortSignal.timeout(10_000),
+            }),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new FlushWatchdogTimeout()), FLUSH_WATCHDOG_MS),
+            ),
+          ]);
           if (res.status === 401) {
             handleUnauthorized();
             break; // don't dead-letter or retry — the queue is retried after re-login
