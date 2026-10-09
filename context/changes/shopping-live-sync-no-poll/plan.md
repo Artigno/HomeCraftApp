@@ -288,11 +288,11 @@ as it does today).
 
 #### Automated
 
-- [x] 2.1 Frontend typecheck passes: `npx tsc --noEmit`
-- [x] 2.2 Lint passes: `npm run lint`
+- [x] 2.1 Frontend typecheck passes: `npx tsc --noEmit` — 67a8b8c
+- [x] 2.2 Lint passes: `npm run lint` — 67a8b8c
 
 #### Manual
 
 - [x] 2.3 Backgrounding then returning to the tab triggers an immediate
       `flushQueue()` attempt visible in Network, not only after the
-      watchdog window
+      watchdog window — 67a8b8c
