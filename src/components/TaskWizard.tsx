@@ -163,7 +163,7 @@ export function TaskWizard({
         if (!o) reset();
       }}
     >
-      <DrawerContent className="mx-auto max-w-lg">
+      <DrawerContent className="mx-auto max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DrawerHeader className="text-left">
           <DrawerTitle className="flex items-center gap-2 text-xl">
             <Wand2 className="size-5 text-[var(--accent-violet)]" />
@@ -190,7 +190,6 @@ export function TaskWizard({
           {isDateOnly ? (
             <>
               <Input
-                autoFocus
                 type="date"
                 value={lastDoneDate}
                 max={toLocalDateInputValue(new Date())}
@@ -233,7 +232,6 @@ export function TaskWizard({
             <>
               {isEditing ? (
                 <Input
-                  autoFocus
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Nazwa zadania"
