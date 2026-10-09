@@ -239,7 +239,7 @@ function TaskTile({
         onRequestConfirm();
       }}
       className={cn(
-        "card-soft relative flex min-h-36 flex-col justify-between rounded-3xl bg-card p-4 text-left ring-1 transition-transform active:scale-[0.97]",
+        "card-soft relative flex min-h-36 flex-col justify-between rounded-3xl bg-card p-4 text-left ring-1 transition-transform active:scale-[0.97] select-none [-webkit-touch-callout:none]",
         s.ring,
       )}
     >

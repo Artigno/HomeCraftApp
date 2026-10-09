@@ -169,10 +169,22 @@ None — no data model or API changes.
 
 ### Phase 1: Remove forced focus from edit modals
 
+> **Adaptation (post-deploy, 2026-10-09)**: Prod testing on iOS Safari showed
+> #9 ("zaznaczony tekst") wasn't fixed by the autoFocus/onOpenAutoFocus
+> change — screenshot showed iOS's native long-press-to-select-text firing
+> on `TaskTile`'s `<p>{task.name}</p>` (behind the action sheet, before
+> TaskWizard even opens), colliding with `use-long-press.ts`'s own 500ms
+> timer. Root cause was misdiagnosed in this plan's Current State Analysis.
+> Fix: added `select-none [-webkit-touch-callout:none]` to the `TaskTile`
+> button in `src/routes/index.tsx` to suppress native text
+> selection/callout on the pressable tile. #10 (keyboard) was confirmed
+> fixed by the original autoFocus removal.
+
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run lint`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 3211e43
+- [x] 1.2 Lint passes: `npm run lint` — 3211e43
+- [x] 1.7 Typecheck + lint pass after TaskTile select-none fix
 
 #### Manual
 
@@ -180,3 +192,5 @@ None — no data model or API changes.
 - [ ] 1.4 "Edytuj datę wykonania" opens with no keyboard shown
 - [ ] 1.5 Manual tap-to-focus + typing still works in both inputs
 - [ ] 1.6 New-task step-1 prompt still autofocuses (regression check)
+- [ ] 1.8 Long-press a tile — no native text-selection/callout appears on
+      the tile itself (iOS Safari)
