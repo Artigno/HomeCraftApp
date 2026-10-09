@@ -11,3 +11,13 @@
 **Rule**: Never compute ids or call `enqueue()`/other side effects inside a `setState` updater; always hoist them before `setState`, reading the outer `state` closure for current-value snapshots. If a future change adds a bulk/batched mutation that could call such a method multiple times within one React batch, re-check whether the order-math read-before-setState pattern needs a stronger guard than the current same-render-closure read.
 
 **Applies to**: plan, implement, impl-review
+
+## Introduce a sentinel Error subclass only when a consumer distinguishes it
+
+**Context**: `src/lib/api/client.ts:136,170` — `flushQueue()`'s per-fetch watchdog race.
+
+**Problem**: `FlushWatchdogTimeout extends Error {}` was added so the watchdog timeout could in principle be told apart from a genuine fetch rejection, but the surrounding `catch` treats both identically (break, keep queued) — the distinction has no current consumer.
+
+**Rule**: _(TBD — fill in once a real pattern recurs)_
+
+**Applies to**: _(TBD)_

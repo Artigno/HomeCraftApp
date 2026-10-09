@@ -1,7 +1,7 @@
 ---
 change_id: shopping-live-sync-no-poll
 title: Shopping items don't sync without a hard refresh
-status: implemented
+status: impl_reviewed
 created: 2026-10-09
 updated: 2026-10-09
 archived_at: null
