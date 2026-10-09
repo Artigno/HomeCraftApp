@@ -227,6 +227,17 @@ None — no data model or local-storage schema changes.
 > The separate sync-only-after-hard-refresh bug is out of scope for this
 > change (pre-existing, not introduced by this wiring).
 
+> **Adaptation 2 (manual testing, 2026-10-09)**: Items still vanished after
+> the per-id fix deployed. Root cause: `enqueue()` writes to a durable
+> localStorage queue (`homesync.request-queue`) — an instance of the old
+> buggy `DELETE /shopping-items/done` queued during earlier testing (before
+> Adaptation 1 landed) was still sitting in the queue on the test device.
+> Deploying new code doesn't touch an already-queued request; `flushQueue()`
+> replays it verbatim. Fixed with a one-time, self-healing purge on module
+> load in `src/lib/api/client.ts` that drops any queued `DELETE
+> /shopping-items/done` entry before it can flush — runs on every device,
+> not just the one tested on, and is a no-op once a queue has been cleaned.
+
 ## Progress
 
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a

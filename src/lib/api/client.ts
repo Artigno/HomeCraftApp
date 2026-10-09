@@ -404,6 +404,21 @@ export async function apiRemoveMember(id: number): Promise<{ ok: boolean; status
 
 export { API_BASE };
 
+// Retired: an earlier build queued DELETE /shopping-items/done (a bulk
+// "clear whatever's done right now" call) instead of per-id deletes. That
+// request is durable in localStorage — redeploying the fixed code doesn't
+// touch an instance already sitting in a device's queue, so without this it
+// would still replay on the next flush and wipe out items marked done after
+// it was queued. One-time purge on load, self-healing per device, safe to
+// run unconditionally (no-op once every affected queue has been cleaned).
+if (isBrowser()) {
+  const queue = readQueue();
+  const cleaned = queue.filter(
+    (r) => !(r.method === "DELETE" && r.path === "/shopping-items/done"),
+  );
+  if (cleaned.length !== queue.length) writeQueue(cleaned);
+}
+
 if (isBrowser()) {
   window.addEventListener("online", () => void flushQueue());
   // Requests queued while logged out (e.g. the seed-data creates pushed on
