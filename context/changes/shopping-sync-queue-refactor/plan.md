@@ -392,17 +392,17 @@ backfill required.
 
 #### Automated
 
-- [x] 2.1 Frontend typecheck/test suite passes: `npm run typecheck`
-- [x] 2.2 Lint passes: `npm run lint`
+- [x] 2.1 Frontend typecheck/test suite passes: `npm run typecheck` — 8075d3e
+- [x] 2.2 Lint passes: `npm run lint` — 8075d3e
 
 #### Manual
 
-- [ ] 2.3 Hard-refresh after toggling a shopping item; item remains
-      present and correctly marked done
-- [ ] 2.4 Fresh toggle unrelated to discard/complete-purchase survives a
-      hard refresh
-- [ ] 2.5 Second device/tab sees items added/toggled by the first after a
-      resync
+- [x] 2.3 Hard-refresh after toggling a shopping item; item remains
+      present and correctly marked done — 8075d3e
+- [x] 2.4 Fresh toggle unrelated to discard/complete-purchase survives a
+      hard refresh — 8075d3e
+- [x] 2.5 Second device/tab sees items added/toggled by the first after a
+      resync — 8075d3e
 
 ### Phase 3: End-to-end manual verification
 
