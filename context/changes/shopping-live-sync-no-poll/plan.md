@@ -275,24 +275,24 @@ as it does today).
 
 #### Automated
 
-- [x] 1.1 Frontend typecheck passes: `npx tsc --noEmit`
-- [x] 1.2 Lint passes: `npm run lint`
+- [x] 1.1 Frontend typecheck passes: `npx tsc --noEmit` — 1f066da
+- [x] 1.2 Lint passes: `npm run lint` — 1f066da
 
 #### Manual
 
 - [x] 1.3 Monkey-patched hung `fetch` confirms watchdog fires (~15s) and
-      `flushPromise` resets instead of staying wedged
-- [x] 1.4 Restored `fetch` confirms queue drains normally afterward
+      `flushPromise` resets instead of staying wedged — 1f066da
+- [x] 1.4 Restored `fetch` confirms queue drains normally afterward — 1f066da
 
 ### Phase 2: Defensive flush kick on tab-return
 
 #### Automated
 
-- [ ] 2.1 Frontend typecheck passes: `npx tsc --noEmit`
-- [ ] 2.2 Lint passes: `npm run lint`
+- [x] 2.1 Frontend typecheck passes: `npx tsc --noEmit`
+- [x] 2.2 Lint passes: `npm run lint`
 
 #### Manual
 
-- [ ] 2.3 Backgrounding then returning to the tab triggers an immediate
+- [x] 2.3 Backgrounding then returning to the tab triggers an immediate
       `flushQueue()` attempt visible in Network, not only after the
       watchdog window

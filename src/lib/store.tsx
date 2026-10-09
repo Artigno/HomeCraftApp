@@ -253,7 +253,10 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
     // alone covers PWA resume; "focus" additionally covers desktop
     // multi-window/multi-tab switching, which visibilitychange can miss.
     const onReturnToApp = () => {
-      if (document.visibilityState === "visible") void syncFromBackend({ incremental: true });
+      if (document.visibilityState === "visible") {
+        void syncFromBackend({ incremental: true });
+        void flushQueue();
+      }
     };
     document.addEventListener("visibilitychange", onReturnToApp);
     window.addEventListener("focus", onReturnToApp);
