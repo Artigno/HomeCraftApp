@@ -2,8 +2,8 @@
 change_id: edit-modal-focus-fixes
 title: Fix edit-modal focus bugs (sprint-1 #9 + #10)
 created: 2026-10-08
-updated: 2026-10-08
-status: implementing
+updated: 2026-10-09
+status: implemented
 archived_at: null
 ---
 

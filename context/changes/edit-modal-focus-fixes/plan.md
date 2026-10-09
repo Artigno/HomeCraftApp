@@ -184,13 +184,13 @@ None — no data model or API changes.
 
 - [x] 1.1 Typecheck passes: `npm run typecheck` — 3211e43
 - [x] 1.2 Lint passes: `npm run lint` — 3211e43
-- [x] 1.7 Typecheck + lint pass after TaskTile select-none fix
+- [x] 1.7 Typecheck + lint pass after TaskTile select-none fix — 07b118a
 
 #### Manual
 
-- [ ] 1.3 "Edytuj" opens with no keyboard shown and no text selected
-- [ ] 1.4 "Edytuj datę wykonania" opens with no keyboard shown
-- [ ] 1.5 Manual tap-to-focus + typing still works in both inputs
-- [ ] 1.6 New-task step-1 prompt still autofocuses (regression check)
-- [ ] 1.8 Long-press a tile — no native text-selection/callout appears on
+- [x] 1.3 "Edytuj" opens with no keyboard shown and no text selected
+- [x] 1.4 "Edytuj datę wykonania" opens with no keyboard shown
+- [x] 1.5 Manual tap-to-focus + typing still works in both inputs
+- [x] 1.6 New-task step-1 prompt still autofocuses (regression check)
+- [x] 1.8 Long-press a tile — no native text-selection/callout appears on
       the tile itself (iOS Safari)
