@@ -413,9 +413,22 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         // empty queue and resolves instantly, closing the modal with no
         // loader while the real request still fires fire-and-forget later.
         enqueue("POST", "/receipts/process", purchase);
+        // Delete by specific id, not the bulk /shopping-items/done endpoint:
+        // enqueue() is a durable, possibly-delayed offline queue, and a bulk
+        // "clear whatever's done" request replayed late would also delete
+        // any item marked done *after* this call (by this device or another
+        // household member) but *before* the request actually flushes.
+        // Per-id delete only ever removes the items that were done right now.
+        bought.forEach((i) => enqueue("DELETE", `/shopping-items/${i.id}`));
         await flushQueue();
       },
       discardCompletedShoppingItems: () => {
+        // enqueue() must run outside the setState updater — see
+        // addShoppingItems above for why. Per-id delete (not the bulk
+        // /shopping-items/done endpoint) for the same reason as
+        // completePurchase above — see its comment.
+        const done = state.shopping.filter((i) => i.done);
+        done.forEach((i) => enqueue("DELETE", `/shopping-items/${i.id}`));
         setState((s) => ({ ...s, shopping: s.shopping.filter((i) => !i.done) }));
       },
       categorizeShoppingItems: async () => {
