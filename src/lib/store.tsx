@@ -33,12 +33,6 @@ import { createSeedState } from "./seed";
 
 const STORAGE_KEY = "homesync.state.v1";
 
-// since-absent and since-epoch are NOT interchangeable for /shopping-items —
-// omitting `since` keeps the legacy done=false-only filter server-side, so a
-// full resync (including done items) must still pass an explicit, far-past
-// `since` value rather than skip the param.
-const EPOCH_SINCE = "1970-01-01T00:00:00Z";
-
 interface StoreValue extends HomeSyncState {
   hydrated: boolean;
   pendingSync: number;
@@ -111,7 +105,10 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
     async (opts?: { incremental?: boolean; retriedAfterInvalidSince?: boolean }) => {
       if (!isAuthenticated()) return;
       const incremental = opts?.incremental ?? false;
-      const since = incremental ? (readShoppingCursor() ?? EPOCH_SINCE) : EPOCH_SINCE;
+      // A full resync omits `since` entirely to hit the backend's unfiltered
+      // branch; an incremental sync with no stored cursor falls back to the
+      // same since-omitted full resync rather than an epoch sentinel.
+      const since = incremental ? (readShoppingCursor() ?? undefined) : undefined;
       const [tasks, recipes, shoppingResult, purchases, tins] = await Promise.all([
         apiGet<MaintenanceTask[] | null>("/maintenance-tasks", null),
         apiGet<Recipe[] | null>("/recipes", null),
@@ -134,9 +131,9 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       if (!shoppingResult.ok) {
         if (shoppingResult.invalidSince && !opts?.retriedAfterInvalidSince) {
           // Corrupted/invalid stored cursor — clear it and retry once as a
-          // full epoch-anchored fetch within the same sync pass. The
-          // retriedAfterInvalidSince flag caps this at a single retry even if
-          // the epoch constant itself somehow gets rejected too.
+          // full since-omitted fetch within the same sync pass. The
+          // retriedAfterInvalidSince flag caps this at a single retry as a
+          // safety net, though a since-omitted request can no longer 422.
           writeShoppingCursor(null);
           await syncFromBackend({ incremental: false, retriedAfterInvalidSince: true });
         }

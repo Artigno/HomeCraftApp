@@ -211,11 +211,14 @@ export function writeShoppingCursor(cursor: string | null): void {
  * drop the cursor and retry.
  */
 export async function apiGetShoppingItems(
-  since: string,
+  since?: string,
 ): Promise<{ ok: true; items: ShoppingItem[] } | { ok: false; invalidSince: boolean } | null> {
   if (!isBrowser() || !navigator.onLine) return null;
   try {
-    const res = await fetch(`${API_BASE}/shopping-items?since=${encodeURIComponent(since)}`, {
+    const url = since
+      ? `${API_BASE}/shopping-items?since=${encodeURIComponent(since)}`
+      : `${API_BASE}/shopping-items`;
+    const res = await fetch(url, {
       headers: { Accept: "application/json", ...authHeaders() },
       signal: AbortSignal.timeout(10_000),
     });
