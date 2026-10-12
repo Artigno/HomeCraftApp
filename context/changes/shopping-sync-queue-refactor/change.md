@@ -1,7 +1,7 @@
 ---
 change_id: shopping-sync-queue-refactor
 title: Refactor offline-queue sync so default path is immediate backend sync
-status: implemented
+status: impl_reviewed
 created: 2026-10-09
 updated: 2026-10-12
 archived_at: null

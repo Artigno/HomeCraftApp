@@ -108,7 +108,7 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       // A full resync omits `since` entirely to hit the backend's unfiltered
       // branch; an incremental sync with no stored cursor falls back to the
       // same since-omitted full resync rather than an epoch sentinel.
-      const since = incremental ? (readShoppingCursor() ?? undefined) : undefined;
+      const since = incremental ? readShoppingCursor() || undefined : undefined;
       const [tasks, recipes, shoppingResult, purchases, tins] = await Promise.all([
         apiGet<MaintenanceTask[] | null>("/maintenance-tasks", null),
         apiGet<Recipe[] | null>("/recipes", null),
