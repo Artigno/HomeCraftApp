@@ -1,7 +1,7 @@
 ---
 change_id: shopping-done-items-clear-wiring
 title: Wire shopping-list done-items clear into DELETE /shopping-items/done
-status: implemented
+status: impl_reviewed
 created: 2026-10-09
 updated: 2026-10-12
 archived_at: null

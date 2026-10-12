@@ -116,6 +116,11 @@ actually cleared server-side whenever they're cleared locally.
 
 ### Changes Required:
 
+> **Superseded** — see the two Adaptation notes near the bottom of this
+> plan. The bulk `enqueue("DELETE", "/shopping-items/done")` approach
+> described below caused a confirmed data-loss race; shipped code uses
+> per-id `enqueue("DELETE", "/shopping-items/${id}")` instead.
+
 #### 1. `discardCompletedShoppingItems()` — hoisted guarded enqueue
 
 **File**: `src/lib/store.tsx`
