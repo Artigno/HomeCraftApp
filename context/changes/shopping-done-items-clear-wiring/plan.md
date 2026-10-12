@@ -252,11 +252,11 @@ None — no data model or local-storage schema changes.
 
 #### Manual
 
-- [ ] 1.3 Discard path ("Wyczyść zaznaczone bez zapisu do budżetu") clears
+- [x] 1.3 Discard path ("Wyczyść zaznaczone bez zapisu do budżetu") clears
       items server-side (survive reload)
-- [ ] 1.4 Purchase path ("Zakończ zakupy", manual form) clears items
+- [x] 1.4 Purchase path ("Zakończ zakupy", manual form) clears items
       server-side (survive reload)
-- [ ] 1.5 Purchase path via receipt-scan review clears items server-side
+- [x] 1.5 Purchase path via receipt-scan review clears items server-side
       (survive reload)
-- [ ] 1.6 Second device/session in same household doesn't see cleared items
+- [x] 1.6 Second device/session in same household doesn't see cleared items
       resurface
