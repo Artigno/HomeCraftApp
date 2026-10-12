@@ -386,7 +386,7 @@ backfill required.
 #### Manual
 
 - [x] 1.3 Live `GET /shopping-items?since=1970-01-01T00:00:00Z` against
-      deployed post-fix backend returns 422
+      deployed post-fix backend returns 422 — cc1265f
 
 ### Phase 2: Frontend full-resync fix (HomeCraftApp)
 
@@ -408,10 +408,10 @@ backfill required.
 
 #### Manual
 
-- [ ] 3.1 Deploy Phase 1 alone; confirm live epoch-sentinel request
+- [x] 3.1 Deploy Phase 1 alone; confirm live epoch-sentinel request
       returns 422
-- [ ] 3.2 Deploy Phase 2 immediately after; confirm full resync omits
+- [x] 3.2 Deploy Phase 2 immediately after; confirm full resync omits
       `since` in the network request
-- [ ] 3.3 Repeat original user-reported repro (toggle, hard refresh);
+- [x] 3.3 Repeat original user-reported repro (toggle, hard refresh);
       item still present and correctly marked done
-- [ ] 3.4 Spot-check an unrelated toggle survives a hard refresh
+- [x] 3.4 Spot-check an unrelated toggle survives a hard refresh
