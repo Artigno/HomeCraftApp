@@ -409,9 +409,9 @@ backfill required.
 #### Manual
 
 - [x] 3.1 Deploy Phase 1 alone; confirm live epoch-sentinel request
-      returns 422
+      returns 422 — 2cb871c
 - [x] 3.2 Deploy Phase 2 immediately after; confirm full resync omits
-      `since` in the network request
+      `since` in the network request — 2cb871c
 - [x] 3.3 Repeat original user-reported repro (toggle, hard refresh);
-      item still present and correctly marked done
-- [x] 3.4 Spot-check an unrelated toggle survives a hard refresh
+      item still present and correctly marked done — 2cb871c
+- [x] 3.4 Spot-check an unrelated toggle survives a hard refresh — 2cb871c
