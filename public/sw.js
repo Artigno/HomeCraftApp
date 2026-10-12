@@ -36,3 +36,50 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(request).then((cached) => cached || caches.match(SCOPE))),
   );
 });
+
+const PUSH_ROUTES = {
+  shopping_item_added: `${SCOPE}shopping`,
+  shopping_finished: `${SCOPE}shopping`,
+  habit_logged: SCOPE,
+  recipe_added: `${SCOPE}cookbook`,
+};
+
+self.addEventListener("push", (event) => {
+  let payload = { title: "HomeSync", body: "", data: {} };
+  try {
+    if (event.data) payload = event.data.json();
+  } catch {
+    // fall back to generic payload above
+  }
+
+  const { title = "HomeSync", body = "", data = {} } = payload;
+
+  event.waitUntil(
+    self.registration
+      .showNotification(title, {
+        body,
+        icon: `${SCOPE}icon-192.png`,
+        badge: `${SCOPE}badge-96.png`,
+        data,
+      })
+      .then(() => {
+        const channel = new BroadcastChannel("homesync-push");
+        channel.postMessage(payload);
+        channel.close();
+      }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const eventType = event.notification.data?.event_type;
+  const targetPath = PUSH_ROUTES[eventType] ?? SCOPE;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((c) => c.url === targetPath);
+      if (existing) return existing.focus();
+      return self.clients.openWindow(targetPath);
+    }),
+  );
+});
