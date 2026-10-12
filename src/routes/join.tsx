@@ -50,7 +50,8 @@ function JoinPage() {
         <h1 className="text-2xl font-bold tracking-tight">Dołącz do domu</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Wpisz kod zaproszenia, który dostałeś/aś od właściciela konta. To urządzenie zostanie na
-          stałe powiązane z kontem — nie zakładasz osobnego loginu i hasła.
+          stałe powiązane z kontem — nie zakładasz osobnego loginu i hasła. Wracasz na nowym
+          urządzeniu? Wpisz swój stary kod — zadziała tak samo.
         </p>
 
         <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-3">

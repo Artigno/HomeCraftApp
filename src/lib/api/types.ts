@@ -96,6 +96,10 @@ export interface HouseholdMember {
   id: number;
   name: string | null;
   is_owner: boolean;
+  /** Owner sees every member's own code; a non-owner member sees only their
+   * own (others are null). Also null for members who joined before this
+   * shipped — no backfill, new data going forward only. */
+  joined_with_code: string | null;
 }
 
 export interface Household {
@@ -112,6 +116,10 @@ export interface PendingMember {
   id: number;
   name: string;
   requested_at: string;
+  /** true when this pending entry came from the re-login path (an existing
+   * member resubmitting their own joined_with_code) rather than a first-time
+   * join. */
+  is_returning: boolean;
 }
 
 export interface ActivityLogEntry {

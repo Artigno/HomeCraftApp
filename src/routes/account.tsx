@@ -97,7 +97,10 @@ function AccountPage() {
           h
             ? {
                 ...h,
-                members: [...h.members, { id: member.id, name: member.name, is_owner: false }],
+                members: [
+                  ...h.members,
+                  { id: member.id, name: member.name, is_owner: false, joined_with_code: null },
+                ],
               }
             : h,
         );
@@ -157,9 +160,7 @@ function AccountPage() {
     }
   }
 
-  async function onCopyCode() {
-    const code = household?.share_code;
-    if (!code) return;
+  async function onCopyCode(code: string) {
     try {
       if (!navigator.clipboard) throw new Error("clipboard unavailable");
       await navigator.clipboard.writeText(code);
@@ -215,7 +216,20 @@ function AccountPage() {
                 key={m.id}
                 className="flex items-center justify-between rounded-2xl border border-border px-3 py-2"
               >
-                <span>{m.name ?? "Bez imienia"}</span>
+                <div className="flex flex-col">
+                  <span>{m.name ?? "Bez imienia"}</span>
+                  {m.joined_with_code && (
+                    <button
+                      type="button"
+                      onClick={() => void onCopyCode(m.joined_with_code!)}
+                      className="flex items-center gap-1 text-left text-xs text-muted-foreground"
+                      aria-label={`Kopiuj kod logowania ${m.name ?? "domownika"}`}
+                    >
+                      <code className="tracking-wide">{m.joined_with_code}</code>
+                      <Copy className="size-3" />
+                    </button>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   {m.is_owner && (
                     <span className="text-xs font-medium text-muted-foreground">Właściciel</span>
@@ -247,7 +261,14 @@ function AccountPage() {
                   key={m.id}
                   className="flex items-center justify-between rounded-2xl border border-border bg-muted/40 px-3 py-2"
                 >
-                  <span>{m.name}</span>
+                  <span className="flex items-center gap-2">
+                    {m.name}
+                    {m.is_returning && (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        Wraca
+                      </span>
+                    )}
+                  </span>
                   <div className="flex items-center gap-1">
                     <Button
                       type="button"
@@ -284,7 +305,7 @@ function AccountPage() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={() => void onCopyCode()}
+                onClick={() => void onCopyCode(household.share_code!)}
                 aria-label="Kopiuj kod"
               >
                 <Copy className="size-4" />
