@@ -12,7 +12,8 @@ import { useEffect, type ReactNode } from "react";
 import { LayoutGrid, ChefHat, ShoppingCart, PieChart, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-import { HomeSyncProvider } from "@/lib/store";
+import { PullToRefresh } from "@/components/PullToRefresh";
+import { HomeSyncProvider, useHomeSync } from "@/lib/store";
 import { isAuthenticated } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -239,15 +240,22 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <HomeSyncProvider>
-        <div
-          className={cn("mx-auto min-h-screen max-w-lg bg-background", !isPublicRoute && "pb-24")}
-        >
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-        </div>
+        <RootContent isPublicRoute={isPublicRoute} />
         {!isPublicRoute && <TabBar />}
         <Toaster position="top-center" />
       </HomeSyncProvider>
     </QueryClientProvider>
   );
+}
+
+function RootContent({ isPublicRoute }: { isPublicRoute: boolean }) {
+  const { refresh } = useHomeSync();
+  const content = (
+    <div className={cn("mx-auto min-h-screen max-w-lg bg-background", !isPublicRoute && "pb-24")}>
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <Outlet />
+    </div>
+  );
+  // Login/join/waitroom aren't authenticated yet — nothing to resync there.
+  return isPublicRoute ? content : <PullToRefresh onRefresh={refresh}>{content}</PullToRefresh>;
 }

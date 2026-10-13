@@ -36,6 +36,7 @@ const STORAGE_KEY = "homesync.state.v1";
 interface StoreValue extends HomeSyncState {
   hydrated: boolean;
   pendingSync: number;
+  refresh: () => Promise<void>;
   logTask: (taskId: string) => void;
   addTask: (task: Omit<MaintenanceTask, "id" | "last_done_at">) => void;
   removeTask: (taskId: string) => void;
@@ -296,11 +297,19 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
     [state.purchases],
   );
 
+  // Same pair the mount effect's visibilitychange/focus handler runs — pull-
+  // to-refresh is just another manual trigger for the same resync.
+  const refresh = useCallback(async () => {
+    await syncFromBackend({ incremental: true });
+    await flushQueue();
+  }, [syncFromBackend]);
+
   const value = useMemo<StoreValue>(
     () => ({
       ...state,
       hydrated,
       pendingSync,
+      refresh,
       logTask: (taskId) => {
         haptic();
         const loggedAt = new Date().toISOString();
@@ -461,7 +470,7 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         enqueue("DELETE", `/tins/${id}`);
       },
     }),
-    [state, hydrated, pendingSync, haptic, daysSincePurchase],
+    [state, hydrated, pendingSync, refresh, haptic, daysSincePurchase],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
