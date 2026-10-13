@@ -580,10 +580,10 @@ first `GET`), and no subscription until they explicitly opt in.
 
 #### Automated
 
-- [x] 4.1 Typecheck passes: `npx tsc --noEmit`
-- [x] 4.2 Lint passes: `npm run lint`
+- [x] 4.1 Typecheck passes: `npx tsc --noEmit` — ac5d620
+- [x] 4.2 Lint passes: `npm run lint` — ac5d620
 
 #### Manual
 
-- [x] 4.3 Open/focused tab resyncs within seconds of a push arriving
-- [x] 4.4 Backgrounded tab still shows the native notification
+- [x] 4.3 Open/focused tab resyncs within seconds of a push arriving — ac5d620
+- [x] 4.4 Backgrounded tab still shows the native notification — ac5d620
