@@ -5,6 +5,7 @@ import { pl } from "date-fns/locale";
 import { X } from "lucide-react";
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { PurchaseDetailModal } from "@/components/PurchaseDetailModal";
 import { groupByField, groupByMonth } from "@/lib/analytics";
 import { apiGetPurchases, type PurchaseFilters } from "@/lib/api/client";
 import type { Purchase } from "@/lib/api/types";
@@ -39,6 +40,7 @@ function Insights() {
   const [groupBy, setGroupBy] = useState<"store" | "category">("store");
   const [filters, setFilters] = useState<PurchaseFilters>(EMPTY_FILTERS);
   const [filtered, setFiltered] = useState<Purchase[] | null>(null);
+  const [detailPurchase, setDetailPurchase] = useState<Purchase | null>(null);
   const hasActiveFilter = Object.values(filters).some((v) => v);
 
   const storeOptions = useMemo(
@@ -232,14 +234,20 @@ function Insights() {
                 </h2>
                 <ul className="mt-2 divide-y divide-border overflow-hidden rounded-3xl bg-card card-soft">
                   {recent.map((p) => (
-                    <li key={p.id} className="flex items-center justify-between px-4 py-3">
-                      <div>
-                        <p className="text-[15px] font-medium">{p.store}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(p.purchased_at), "d MMMM yyyy", { locale: pl })}
-                        </p>
-                      </div>
-                      <span className="text-[15px] font-semibold">{p.total.toFixed(2)} zł</span>
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => setDetailPurchase(p)}
+                        className="flex w-full items-center justify-between px-4 py-3 text-left active:bg-muted/60"
+                      >
+                        <div>
+                          <p className="text-[15px] font-medium">{p.store}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(p.purchased_at), "d MMMM yyyy", { locale: pl })}
+                          </p>
+                        </div>
+                        <span className="text-[15px] font-semibold">{p.total.toFixed(2)} zł</span>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -248,6 +256,14 @@ function Insights() {
           </>
         )}
       </div>
+
+      <PurchaseDetailModal
+        purchase={detailPurchase}
+        open={detailPurchase !== null}
+        onOpenChange={(o) => {
+          if (!o) setDetailPurchase(null);
+        }}
+      />
     </div>
   );
 }

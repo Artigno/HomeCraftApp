@@ -90,6 +90,10 @@ export interface Purchase {
   total: number;
   purchased_at: string;
   lines: PurchaseLine[];
+  // Temporary S3 URL, expires 10 minutes after the backend generated it —
+  // never cache/persist this field, always use whatever came with the
+  // purchase on its most recent fetch.
+  receipt_image_url?: string | null;
 }
 
 export interface HouseholdMember {
