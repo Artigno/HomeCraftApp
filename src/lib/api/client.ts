@@ -139,7 +139,11 @@ let flushPromise: Promise<void> | null = null;
 const FLUSH_WATCHDOG_MS = 15_000;
 
 export function flushQueue(): Promise<void> {
-  if (!isBrowser() || !navigator.onLine) return Promise.resolve();
+  // Not gated on navigator.onLine — on iOS standalone PWAs it can get stuck
+  // `false` after a screen-lock resume (a known WebKit quirk) until a full
+  // reload, which would silently wedge every sync/flush forever. Every path
+  // below already try/catches a genuine offline fetch failure gracefully.
+  if (!isBrowser()) return Promise.resolve();
   if (flushPromise) return flushPromise;
   flushPromise = (async () => {
     try {
@@ -188,7 +192,8 @@ export function flushQueue(): Promise<void> {
 }
 
 export async function apiGet<T>(path: string, fallback: T): Promise<T> {
-  if (!isBrowser() || !navigator.onLine) return fallback;
+  // See the comment on flushQueue above re: not trusting navigator.onLine.
+  if (!isBrowser()) return fallback;
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       headers: { Accept: "application/json", ...authHeaders() },
@@ -233,7 +238,8 @@ export function writeShoppingCursor(cursor: string | null): void {
 export async function apiGetShoppingItems(
   since?: string,
 ): Promise<{ ok: true; items: ShoppingItem[] } | { ok: false; invalidSince: boolean } | null> {
-  if (!isBrowser() || !navigator.onLine) return null;
+  // See the comment on flushQueue above re: not trusting navigator.onLine.
+  if (!isBrowser()) return null;
   try {
     const url = since
       ? `${API_BASE}/shopping-items?since=${encodeURIComponent(since)}`
@@ -462,7 +468,8 @@ export async function apiCategorizeShoppingItems(): Promise<
 export async function apiGetShoppingSuggestions(): Promise<
   { ok: true; items: ShoppingSuggestion[] } | { ok: false; status: number }
 > {
-  if (!isBrowser() || !navigator.onLine) return { ok: false, status: 0 };
+  // See the comment on flushQueue above re: not trusting navigator.onLine.
+  if (!isBrowser()) return { ok: false, status: 0 };
   try {
     const res = await fetch(`${API_BASE}/shopping-suggestions`, {
       headers: { Accept: "application/json", ...authHeaders() },
@@ -483,7 +490,8 @@ export async function apiGetShoppingSuggestions(): Promise<
  * dismissal cooldown (suppressed until bought 2 more times), nothing to
  * track client-side beyond optimistically hiding it from this render. */
 export async function apiDismissShoppingSuggestion(id: number): Promise<{ ok: boolean }> {
-  if (!isBrowser() || !navigator.onLine) return { ok: false };
+  // See the comment on flushQueue above re: not trusting navigator.onLine.
+  if (!isBrowser()) return { ok: false };
   try {
     const res = await fetch(`${API_BASE}/shopping-suggestions/${id}/dismiss`, {
       method: "POST",
