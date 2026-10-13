@@ -558,23 +558,23 @@ first `GET`), and no subscription until they explicitly opt in.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes: `npx tsc --noEmit`
-- [x] 2.2 Lint passes: `npm run lint`
+- [x] 2.1 Typecheck passes: `npx tsc --noEmit` — f1a43f4
+- [x] 2.2 Lint passes: `npm run lint` — f1a43f4
 
 ### Phase 3: Settings UI — Powiadomienia section
 
 #### Automated
 
-- [ ] 3.1 Typecheck passes: `npx tsc --noEmit`
-- [ ] 3.2 Lint passes: `npm run lint`
+- [x] 3.1 Typecheck passes: `npx tsc --noEmit`
+- [x] 3.2 Lint passes: `npm run lint`
 
 #### Manual
 
-- [ ] 3.3 Toggles visible, default on, persist across reload
-- [ ] 3.4 Enable button requests permission, subscribes, flips state
-- [ ] 3.5 Disable button unsubscribes, flips state back
-- [ ] 3.6 Logout removes this device's subscription server-side
-- [ ] 3.7 iOS non-standalone shows instructional message, not the button
+- [x] 3.3 Toggles visible, default on, persist across reload
+- [x] 3.4 Enable button requests permission, subscribes, flips state
+- [x] 3.5 Disable button unsubscribes, flips state back
+- [x] 3.6 Logout removes this device's subscription server-side
+- [x] 3.7 iOS non-standalone shows instructional message, not the button
 
 ### Phase 4: Live-refresh on push while a tab is open
 

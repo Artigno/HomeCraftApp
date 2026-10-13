@@ -5,16 +5,64 @@ import { Check, Copy, LogOut, RefreshCw, Trash2, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   apiApprovePendingMember,
   apiGet,
+  apiGetNotificationPreferences,
+  apiGetVapidPublicKey,
+  apiPatchNotificationPreferences,
   apiProfile,
   apiRegenerateShareCode,
   apiRejectPendingMember,
   apiRemoveMember,
+  apiSubscribePush,
+  apiUnsubscribePush,
 } from "@/lib/api/client";
 import { clearAuthToken, getIsOwner, getMyName, setMyName } from "@/lib/auth";
-import type { ActivityPage, Household, PendingMember } from "@/lib/api/types";
+import type {
+  ActivityPage,
+  Household,
+  NotificationPreferences,
+  PendingMember,
+} from "@/lib/api/types";
+
+const PREF_LABELS: [keyof NotificationPreferences, string][] = [
+  ["shopping_item_added", "Nowy produkt na liście zakupów"],
+  ["shopping_finished", "Zakończone zakupy"],
+  ["habit_logged", "Zarejestrowana czynność konserwacyjna"],
+  ["recipe_added", "Nowy przepis"],
+];
+
+function isPushSupported() {
+  return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
+}
+
+function isIOSDevice() {
+  return typeof navigator !== "undefined" && /iPhone|iPad|iPod/.test(navigator.userAgent);
+}
+
+function isStandaloneDisplay() {
+  return (
+    typeof window !== "undefined" &&
+    (window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true)
+  );
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(new ArrayBuffer(rawData.length));
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+async function getCurrentPushSubscription(): Promise<PushSubscription | null> {
+  const registration = await navigator.serviceWorker.ready;
+  return registration.pushManager.getSubscription();
+}
 
 export const Route = createFileRoute("/account")({
   head: () => ({ meta: [{ title: "Konto — HomeSync" }] }),
@@ -37,6 +85,16 @@ function AccountPage() {
   const [canRegenerate, setCanRegenerate] = useState(() => getIsOwner());
   const [pendingMembers, setPendingMembers] = useState<PendingMember[] | null>(null);
   const [processingId, setProcessingId] = useState<number | null>(null);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [iosBlocked, setIosBlocked] = useState(false);
+
+  useEffect(() => {
+    setPushSupported(isPushSupported());
+    setIosBlocked(isIOSDevice() && !isStandaloneDisplay());
+  }, []);
+  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const [subscribed, setSubscribed] = useState(false);
+  const [subLoading, setSubLoading] = useState(false);
 
   useEffect(() => {
     void apiGet<Household | null>("/household", null).then(setHousehold);
@@ -46,7 +104,13 @@ function AccountPage() {
         setPendingMembers,
       );
     }
-  }, []);
+    if (pushSupported) {
+      void apiGetNotificationPreferences().then(setPrefs);
+      void getCurrentPushSubscription()
+        .then((sub) => setSubscribed(sub !== null))
+        .catch(() => setSubscribed(false));
+    }
+  }, [pushSupported]);
 
   async function onSaveName(e: React.FormEvent) {
     e.preventDefault();
@@ -181,7 +245,77 @@ function AccountPage() {
     }
   }
 
-  function onLogout() {
+  async function onTogglePreference(key: keyof NotificationPreferences, value: boolean) {
+    setPrefs((p) => (p ? { ...p, [key]: value } : p));
+    const res = await apiPatchNotificationPreferences({ [key]: value });
+    if (!res.ok) {
+      setPrefs((p) => (p ? { ...p, [key]: !value } : p));
+      toast.error("Nie udało się zapisać ustawienia.");
+    }
+  }
+
+  async function onEnableNotifications() {
+    setSubLoading(true);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        toast.error("Brak zgody na powiadomienia.");
+        return;
+      }
+      const vapidKey = await apiGetVapidPublicKey();
+      if (!vapidKey) {
+        toast.error("Nie udało się pobrać klucza powiadomień.");
+        return;
+      }
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+      const json = subscription.toJSON() as {
+        endpoint: string;
+        keys: { p256dh: string; auth: string };
+      };
+      const res = await apiSubscribePush({ endpoint: json.endpoint, keys: json.keys });
+      if (res.ok) {
+        setSubscribed(true);
+        toast.success("Włączono powiadomienia.");
+      } else {
+        toast.error("Nie udało się zarejestrować powiadomień.");
+      }
+    } catch {
+      toast.error("Nie udało się włączyć powiadomień.");
+    } finally {
+      setSubLoading(false);
+    }
+  }
+
+  async function onDisableNotifications() {
+    setSubLoading(true);
+    try {
+      const subscription = await getCurrentPushSubscription();
+      if (subscription) {
+        await apiUnsubscribePush(subscription.endpoint);
+        await subscription.unsubscribe();
+      }
+      setSubscribed(false);
+      toast.success("Wyłączono powiadomienia.");
+    } catch {
+      toast.error("Nie udało się wyłączyć powiadomień.");
+    } finally {
+      setSubLoading(false);
+    }
+  }
+
+  async function onLogout() {
+    if (pushSupported) {
+      try {
+        const subscription = await getCurrentPushSubscription();
+        if (subscription) await apiUnsubscribePush(subscription.endpoint);
+      } catch {
+        // best-effort — offline logout shouldn't be blocked by this
+      }
+    }
     clearAuthToken();
     void router.navigate({ to: "/login", replace: true });
   }
@@ -328,6 +462,46 @@ function AccountPage() {
           )}
         </section>
 
+        {pushSupported && (
+          <section>
+            <h2 className="text-sm font-semibold text-muted-foreground">Powiadomienia</h2>
+            <div className="mt-2 flex flex-col gap-2">
+              {PREF_LABELS.map(([key, label]) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between rounded-2xl border border-border px-3 py-2"
+                >
+                  <span className="text-sm">{label}</span>
+                  <Switch
+                    checked={prefs?.[key] ?? true}
+                    onCheckedChange={(checked) => void onTogglePreference(key, checked)}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {iosBlocked ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Aby włączyć powiadomienia na iPhonie/iPadzie, najpierw dodaj aplikację do ekranu
+                głównego (Udostępnij → Dodaj do ekranu początkowego), a następnie otwórz ją z ikony.
+              </p>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="mt-3"
+                onClick={() =>
+                  void (subscribed ? onDisableNotifications() : onEnableNotifications())
+                }
+                disabled={subLoading}
+              >
+                {subscribed ? "Wyłącz powiadomienia" : "Włącz powiadomienia"}
+              </Button>
+            )}
+          </section>
+        )}
+
         <section>
           <h2 className="text-sm font-semibold text-muted-foreground">Aktywność</h2>
           <ul className="mt-2 flex flex-col gap-2">
@@ -351,7 +525,7 @@ function AccountPage() {
           )}
         </section>
 
-        <Button type="button" variant="outline" onClick={onLogout} className="mb-4">
+        <Button type="button" variant="outline" onClick={() => void onLogout()} className="mb-4">
           <LogOut className="mr-2 size-4" />
           Wyloguj
         </Button>
