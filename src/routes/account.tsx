@@ -247,8 +247,13 @@ function AccountPage() {
 
   async function onTogglePreference(key: keyof NotificationPreferences, value: boolean) {
     setPrefs((p) => (p ? { ...p, [key]: value } : p));
-    const res = await apiPatchNotificationPreferences({ [key]: value });
-    if (!res.ok) {
+    try {
+      const res = await apiPatchNotificationPreferences({ [key]: value });
+      if (!res.ok) {
+        setPrefs((p) => (p ? { ...p, [key]: !value } : p));
+        toast.error("Nie udało się zapisać ustawienia.");
+      }
+    } catch {
       setPrefs((p) => (p ? { ...p, [key]: !value } : p));
       toast.error("Nie udało się zapisać ustawienia.");
     }
@@ -311,7 +316,10 @@ function AccountPage() {
     if (pushSupported) {
       try {
         const subscription = await getCurrentPushSubscription();
-        if (subscription) await apiUnsubscribePush(subscription.endpoint);
+        if (subscription) {
+          await apiUnsubscribePush(subscription.endpoint);
+          await subscription.unsubscribe();
+        }
       } catch {
         // best-effort — offline logout shouldn't be blocked by this
       }

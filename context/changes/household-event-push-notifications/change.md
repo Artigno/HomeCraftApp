@@ -1,7 +1,7 @@
 ---
 change_id: household-event-push-notifications
 title: Web push notifications for household events (frontend)
-status: implemented
+status: impl_reviewed
 created: 2026-10-12
 updated: 2026-10-13
 archived_at: null
