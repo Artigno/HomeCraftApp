@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import { useRef, useState, type ReactNode, type TouchEvent } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const TRIGGER_PX = 60;
@@ -14,57 +14,81 @@ export function PullToRefresh({
 }) {
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef<number | null>(null);
   const armedRef = useRef(false);
+  const pullRef = useRef(0);
+  const refreshingRef = useRef(false);
 
-  function onTouchStart(e: TouchEvent<HTMLDivElement>) {
-    if (refreshing) return;
-    // Only arm the gesture when the page is already scrolled to the top —
-    // otherwise an ordinary upward scroll-then-overshoot would trigger it.
-    armedRef.current = window.scrollY <= 0;
-    startYRef.current = armedRef.current ? e.touches[0]!.clientY : null;
-  }
+  useEffect(() => {
+    pullRef.current = pull;
+  }, [pull]);
+  useEffect(() => {
+    refreshingRef.current = refreshing;
+  }, [refreshing]);
 
-  function onTouchMove(e: TouchEvent<HTMLDivElement>) {
-    if (!armedRef.current || startYRef.current === null) return;
-    const delta = e.touches[0]!.clientY - startYRef.current;
-    if (delta <= 0) {
-      setPull(0);
-      return;
+  // React attaches JSX onTouchMove as a passive listener, so e.preventDefault()
+  // inside it is a silent no-op on iOS — the browser still owns the gesture and
+  // nothing visibly happens. A pull-to-refresh drag has to block native scroll
+  // mid-gesture, which only a manually-attached { passive: false } listener can do.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    function onTouchStart(e: TouchEvent) {
+      if (refreshingRef.current) return;
+      armedRef.current = window.scrollY <= 0;
+      startYRef.current = armedRef.current ? e.touches[0]!.clientY : null;
     }
-    // Only take over the gesture once the page is confirmed pinned to the
-    // top — prevents fighting the browser's own scroll on the way there.
-    if (window.scrollY > 0) {
-      armedRef.current = false;
-      setPull(0);
-      return;
-    }
-    e.preventDefault();
-    setPull(Math.min(delta, MAX_PULL_PX));
-  }
 
-  function onTouchEnd() {
-    armedRef.current = false;
-    startYRef.current = null;
-    if (pull >= TRIGGER_PX) {
-      setRefreshing(true);
-      setPull(TRIGGER_PX);
-      void onRefresh().finally(() => {
-        setRefreshing(false);
+    function onTouchMove(e: TouchEvent) {
+      if (!armedRef.current || startYRef.current === null) return;
+      const delta = e.touches[0]!.clientY - startYRef.current;
+      if (delta <= 0) {
         setPull(0);
-      });
-    } else {
-      setPull(0);
+        return;
+      }
+      if (window.scrollY > 0) {
+        armedRef.current = false;
+        setPull(0);
+        return;
+      }
+      e.preventDefault();
+      setPull(Math.min(delta, MAX_PULL_PX));
     }
-  }
+
+    function onTouchEnd() {
+      armedRef.current = false;
+      startYRef.current = null;
+      if (pullRef.current >= TRIGGER_PX) {
+        setRefreshing(true);
+        setPull(TRIGGER_PX);
+        void onRefresh().finally(() => {
+          setRefreshing(false);
+          setPull(0);
+        });
+      } else {
+        setPull(0);
+      }
+    }
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    el.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [onRefresh]);
 
   const indicatorActive = pull > 0 || refreshing;
 
   return (
     <div
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
+      ref={containerRef}
       style={{ touchAction: refreshing ? "none" : "pan-y", overscrollBehaviorY: "contain" }}
     >
       <div
