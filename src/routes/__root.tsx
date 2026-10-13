@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { LayoutGrid, ChefHat, ShoppingCart, PieChart, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -216,6 +216,20 @@ function RootComponent() {
       void router.navigate({ to: "/shopping", replace: true });
     }
   }, [pathname, isPublicRoute, router]);
+
+  // Covers the PWA-icon launch case: an already-installed home-screen icon
+  // keeps whatever start_url it captured at install time (iOS doesn't pick up
+  // a manifest start_url change retroactively), so a reinstall-free fix needs
+  // a runtime bounce too. Fires once per cold load only — not on every
+  // pathname change — so deliberately tapping the "Dom" tab later still works.
+  const didBounceFromRoot = useRef(false);
+  useEffect(() => {
+    if (didBounceFromRoot.current) return;
+    didBounceFromRoot.current = true;
+    if (pathname === "/" && isAuthenticated()) {
+      void router.navigate({ to: "/shopping", replace: true });
+    }
+  }, []);
 
   // client.ts dispatches this on a 401 instead of doing a hard reload, which
   // would interrupt React's in-flight hydration of the SSR-streamed shell.
