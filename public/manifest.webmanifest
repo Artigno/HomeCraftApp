@@ -2,7 +2,7 @@
   "name": "HomeSync",
   "short_name": "HomeSync",
   "description": "Konserwacja domu, lista zakupów, przepisy i budżet — offline-first.",
-  "start_url": "./",
+  "start_url": "./shopping",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

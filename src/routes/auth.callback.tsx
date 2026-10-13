@@ -28,7 +28,7 @@ function AuthCallback() {
   useEffect(() => {
     if (token) {
       setAuthToken(token);
-      void navigate({ to: "/", replace: true });
+      void navigate({ to: "/shopping", replace: true });
     }
   }, [token, navigate]);
 

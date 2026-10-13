@@ -213,7 +213,7 @@ function RootComponent() {
     if (!isPublicRoute && !authed) {
       void router.navigate({ to: "/login", replace: true });
     } else if (pathname === "/login" && authed) {
-      void router.navigate({ to: "/", replace: true });
+      void router.navigate({ to: "/shopping", replace: true });
     }
   }, [pathname, isPublicRoute, router]);
 

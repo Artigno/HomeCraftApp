@@ -31,7 +31,7 @@ function LoginPage() {
       const res = await apiAuth<{ token: string }>(path, body);
       if (res.ok) {
         setAuthToken(res.data.token);
-        void navigate({ to: "/", replace: true });
+        void navigate({ to: "/shopping", replace: true });
         return;
       }
       if (res.status === 429) {

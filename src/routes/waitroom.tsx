@@ -22,7 +22,7 @@ function WaitroomPage() {
       while (!stopped.current) {
         const status = await apiGet<JoinStatus | null>("/household/join-status", null);
         if (status?.approved) {
-          void navigate({ to: "/", replace: true });
+          void navigate({ to: "/shopping", replace: true });
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, POLL_MS));
