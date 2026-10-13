@@ -155,10 +155,16 @@ function TabBar() {
             to={to}
             activeOptions={{ exact: to === "/" }}
             className={cn(
-              "flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors active:scale-95",
+              "flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium transition-colors active:scale-95",
               label === null && "justify-center",
             )}
+            // activeProps only ADDS a class, it doesn't remove the inactive
+            // one — so the base className must not carry text-muted-foreground
+            // unconditionally, or both color utilities land on the element at
+            // once and Tailwind's generated CSS order (not component logic)
+            // decides which one wins.
             activeProps={{ className: "text-foreground" }}
+            inactiveProps={{ className: "text-muted-foreground" }}
             aria-label={label ?? "Konto"}
           >
             <Icon className={label === null ? "size-7" : "size-5"} />
