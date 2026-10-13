@@ -260,11 +260,19 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
     };
     document.addEventListener("visibilitychange", onReturnToApp);
     window.addEventListener("focus", onReturnToApp);
+    // The service worker broadcasts on every push it receives (regardless of
+    // event_type) — ignore the payload and just resync, since syncFromBackend
+    // already pulls every domain in one pass and no-ops when unauthenticated.
+    const pushChannel = new BroadcastChannel("homesync-push");
+    const onPush = () => void syncFromBackend({ incremental: true });
+    pushChannel.addEventListener("message", onPush);
     return () => {
       window.removeEventListener("homesync:queue", onQueue);
       window.removeEventListener("homesync:auth", onAuth);
       document.removeEventListener("visibilitychange", onReturnToApp);
       window.removeEventListener("focus", onReturnToApp);
+      pushChannel.removeEventListener("message", onPush);
+      pushChannel.close();
     };
   }, [syncFromBackend]);
 
