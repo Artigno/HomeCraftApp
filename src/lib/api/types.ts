@@ -156,6 +156,13 @@ export interface ShoppingSuggestion {
   days_since_last_purchase: number;
 }
 
+export interface NotificationPreferences {
+  shopping_item_added: boolean;
+  shopping_finished: boolean;
+  habit_logged: boolean;
+  recipe_added: boolean;
+}
+
 export interface HomeSyncState {
   tasks: MaintenanceTask[];
   logs: MaintenanceLog[];

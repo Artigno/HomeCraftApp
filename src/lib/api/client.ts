@@ -8,7 +8,12 @@
  */
 
 import { clearAuthToken, getAuthToken, isAuthenticated } from "../auth";
-import type { ReceiptParseResult, ShoppingItem, ShoppingSuggestion } from "./types";
+import type {
+  NotificationPreferences,
+  ReceiptParseResult,
+  ShoppingItem,
+  ShoppingSuggestion,
+} from "./types";
 
 const API_BASE =
   (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.homesync.local/api";
@@ -322,6 +327,87 @@ export async function apiRejectPendingMember(id: number): Promise<{ ok: boolean;
   const res = await fetch(`${API_BASE}/household/pending-members/${id}/reject`, {
     method: "POST",
     headers: { Accept: "application/json", ...authHeaders() },
+    signal: AbortSignal.timeout(10_000),
+  });
+  return { ok: res.ok, status: res.status };
+}
+
+/** GET /push/vapid-public-key — no cached fallback exists, so `null` on any failure. */
+export async function apiGetVapidPublicKey(): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/push/vapid-public-key`, {
+      headers: { Accept: "application/json", ...authHeaders() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { public_key: string };
+    return data.public_key;
+  } catch {
+    return null;
+  }
+}
+
+/** POST /push/subscriptions — synchronous; upserts by endpoint server-side. */
+export async function apiSubscribePush(subscription: {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}): Promise<{ ok: boolean; status: number }> {
+  const res = await fetch(`${API_BASE}/push/subscriptions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(subscription),
+    signal: AbortSignal.timeout(10_000),
+  });
+  return { ok: res.ok, status: res.status };
+}
+
+/** DELETE /push/subscriptions — synchronous; removes this device's subscription. */
+export async function apiUnsubscribePush(
+  endpoint: string,
+): Promise<{ ok: boolean; status: number }> {
+  const res = await fetch(`${API_BASE}/push/subscriptions`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ endpoint }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  return { ok: res.ok, status: res.status };
+}
+
+/** GET /notification-preferences — null on failure; backend auto-creates all-true defaults. */
+export async function apiGetNotificationPreferences(): Promise<NotificationPreferences | null> {
+  try {
+    const res = await fetch(`${API_BASE}/notification-preferences`, {
+      headers: { Accept: "application/json", ...authHeaders() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as NotificationPreferences;
+  } catch {
+    return null;
+  }
+}
+
+/** PATCH /notification-preferences — partial update, only sends what changed. */
+export async function apiPatchNotificationPreferences(
+  patch: Partial<NotificationPreferences>,
+): Promise<{ ok: boolean; status: number }> {
+  const res = await fetch(`${API_BASE}/notification-preferences`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(patch),
     signal: AbortSignal.timeout(10_000),
   });
   return { ok: res.ok, status: res.status };

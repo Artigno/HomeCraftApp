@@ -545,21 +545,21 @@ first `GET`), and no subscription until they explicitly opt in.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npx tsc --noEmit`
-- [x] 1.2 Lint passes: `npm run lint`
+- [x] 1.1 Typecheck passes: `npx tsc --noEmit` — c1fda29
+- [x] 1.2 Lint passes: `npm run lint` — c1fda29
 
 #### Manual
 
-- [ ] 1.3 Test push via devtools shows native notification with icon/badge
-- [ ] 1.4 Click routes to `/shopping` for shopping event types
-- [ ] 1.5 Click routes to `/` for habit_logged, `/cookbook` for recipe_added
+- [x] 1.3 Test push via devtools shows native notification with icon/badge
+- [x] 1.4 Click routes to `/shopping` for shopping event types
+- [x] 1.5 Click routes to `/` for habit_logged, `/cookbook` for recipe_added
 
 ### Phase 2: API client — subscribe, preferences, types
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npx tsc --noEmit`
-- [ ] 2.2 Lint passes: `npm run lint`
+- [x] 2.1 Typecheck passes: `npx tsc --noEmit`
+- [x] 2.2 Lint passes: `npm run lint`
 
 ### Phase 3: Settings UI — Powiadomienia section
 
