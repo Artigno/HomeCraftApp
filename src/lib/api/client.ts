@@ -10,6 +10,7 @@
 import { clearAuthToken, getAuthToken, isAuthenticated } from "../auth";
 import type {
   NotificationPreferences,
+  Purchase,
   ReceiptParseResult,
   ShoppingItem,
   ShoppingSuggestion,
@@ -512,6 +513,41 @@ export async function apiRemoveMember(id: number): Promise<{ ok: boolean; status
     signal: AbortSignal.timeout(10_000),
   });
   return { ok: res.ok, status: res.status };
+}
+
+export interface PurchaseFilters {
+  store?: string;
+  category?: string;
+  from?: string;
+  to?: string;
+  product?: string;
+}
+
+/** GET /purchases?store=&category=&from=&to=&product= — all params optional, AND semantics.
+ * `product` matches any purchase line's name (case-insensitive partial) and
+ * the backend trims the returned `lines` array to just the matching lines. */
+export async function apiGetPurchases(filters: PurchaseFilters): Promise<Purchase[] | null> {
+  // See the comment on flushQueue above re: not trusting navigator.onLine.
+  if (!isBrowser()) return null;
+  try {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (value) params.set(key, value);
+    }
+    const query = params.toString();
+    const res = await fetch(`${API_BASE}/purchases${query ? `?${query}` : ""}`, {
+      headers: { Accept: "application/json", ...authHeaders() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (res.status === 401) {
+      handleUnauthorized();
+      return null;
+    }
+    if (!res.ok) return null;
+    return (await res.json()) as Purchase[];
+  } catch {
+    return null;
+  }
 }
 
 export { API_BASE };
