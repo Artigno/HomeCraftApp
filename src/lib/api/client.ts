@@ -144,22 +144,26 @@ let flushStartedAt = 0;
 // this watchdog's own setTimeout can fail to settle (observed: a locked
 // screen during a flush left every subsequent enqueue — toggle, delete —
 // producing zero network activity, because flushPromise below was never
-// cleared). So flushStartedAt is a second, caller-side escape hatch: if a
-// new flushQueue() call shows up well past the watchdog's own bound, the
-// previous attempt is presumed abandoned and a fresh flush starts instead
-// of returning the stale promise forever. The abandoned promise is left to
-// resolve into the void if it ever does; that's harmless — the queue item
-// it was working on is read fresh from localStorage by the new attempt.
+// cleared). flushStartedAt is a time-based escape hatch for callers that
+// have no better signal — but __root.tsx/store.tsx's resume handlers
+// (visibilitychange/focus/online, i.e. exactly the "coming back from a
+// lock" moment) pass `force: true` instead of waiting out this bound: the
+// resume event itself is stronger evidence of a stale flush than any fixed
+// timeout, so there's no reason to make the user wait for it. The abandoned
+// promise is left to resolve into the void if it ever does; that's
+// harmless — the queue item it was working on is read fresh from
+// localStorage by the new attempt.
 const FLUSH_WATCHDOG_MS = 15_000;
 const FLUSH_STALE_MS = FLUSH_WATCHDOG_MS * 2;
 
-export function flushQueue(): Promise<void> {
+export function flushQueue(opts?: { force?: boolean }): Promise<void> {
   // Not gated on navigator.onLine — on iOS standalone PWAs it can get stuck
   // `false` after a screen-lock resume (a known WebKit quirk) until a full
   // reload, which would silently wedge every sync/flush forever. Every path
   // below already try/catches a genuine offline fetch failure gracefully.
   if (!isBrowser()) return Promise.resolve();
-  if (flushPromise && Date.now() - flushStartedAt < FLUSH_STALE_MS) return flushPromise;
+  const stale = flushPromise && Date.now() - flushStartedAt >= FLUSH_STALE_MS;
+  if (flushPromise && !stale && !opts?.force) return flushPromise;
   flushStartedAt = Date.now();
   flushPromise = (async () => {
     try {
@@ -583,7 +587,7 @@ if (isBrowser()) {
 }
 
 if (isBrowser()) {
-  window.addEventListener("online", () => void flushQueue());
+  window.addEventListener("online", () => void flushQueue({ force: true }));
   // Requests queued while logged out (e.g. the seed-data creates pushed on
   // first hydration, which happens on /login too, before a token exists)
   // 401 and stay stuck in the queue by design — retry them the moment a

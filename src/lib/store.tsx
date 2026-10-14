@@ -256,7 +256,11 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
     const onReturnToApp = () => {
       if (document.visibilityState === "visible") {
         void syncFromBackend({ incremental: true });
-        void flushQueue();
+        // force: true — this resume event IS the signal that any prior
+        // in-flight flush (started before a screen-lock suspended the JS
+        // context) is stale, so don't make the user wait out flushQueue's
+        // own time-based staleness bound. See client.ts for the full story.
+        void flushQueue({ force: true });
       }
     };
     document.addEventListener("visibilitychange", onReturnToApp);
