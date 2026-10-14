@@ -132,12 +132,26 @@ export function enqueue(
 // second caller short-circuiting on a "flushing" flag and resolving before
 // the real network round-trip finishes.
 let flushPromise: Promise<void> | null = null;
+let flushStartedAt = 0;
 
 // Independent hard bound on a single queue iteration's fetch, so a hang
 // that bypasses AbortSignal.timeout (e.g. a suspended backgrounded tab)
 // can't wedge flushPromise forever. Kept above the per-fetch 10s abort
 // timeout so the normal abort path gets first chance to fire.
+//
+// This bound is itself unreliable on iOS: a screen-lock can suspend the
+// whole JS context mid-fetch, and on resume both the in-flight fetch AND
+// this watchdog's own setTimeout can fail to settle (observed: a locked
+// screen during a flush left every subsequent enqueue — toggle, delete —
+// producing zero network activity, because flushPromise below was never
+// cleared). So flushStartedAt is a second, caller-side escape hatch: if a
+// new flushQueue() call shows up well past the watchdog's own bound, the
+// previous attempt is presumed abandoned and a fresh flush starts instead
+// of returning the stale promise forever. The abandoned promise is left to
+// resolve into the void if it ever does; that's harmless — the queue item
+// it was working on is read fresh from localStorage by the new attempt.
 const FLUSH_WATCHDOG_MS = 15_000;
+const FLUSH_STALE_MS = FLUSH_WATCHDOG_MS * 2;
 
 export function flushQueue(): Promise<void> {
   // Not gated on navigator.onLine — on iOS standalone PWAs it can get stuck
@@ -145,7 +159,8 @@ export function flushQueue(): Promise<void> {
   // reload, which would silently wedge every sync/flush forever. Every path
   // below already try/catches a genuine offline fetch failure gracefully.
   if (!isBrowser()) return Promise.resolve();
-  if (flushPromise) return flushPromise;
+  if (flushPromise && Date.now() - flushStartedAt < FLUSH_STALE_MS) return flushPromise;
+  flushStartedAt = Date.now();
   flushPromise = (async () => {
     try {
       let queue = readQueue();
