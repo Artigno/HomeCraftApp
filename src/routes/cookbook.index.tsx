@@ -1,7 +1,8 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Clock, Plus, Ruler, Users } from "lucide-react";
+import { Clock, Link2, Plus, Ruler, Users } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { RecipeImportModal } from "@/components/RecipeImportModal";
 import { Button } from "@/components/ui/button";
 import { useHomeSync } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/cookbook/")({
 function CookbookList() {
   const { recipes } = useHomeSync();
   const [filter, setFilter] = useState<string>("Wszystkie");
+  const [importOpen, setImportOpen] = useState(false);
 
   const tags = useMemo(
     () => ["Wszystkie", ...Array.from(new Set(recipes.flatMap((r) => r.tags)))],
@@ -47,6 +49,15 @@ function CookbookList() {
                 Moje blaszki
               </Link>
             </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-9 shrink-0 rounded-full"
+              aria-label="Zaimportuj z linku"
+              onClick={() => setImportOpen(true)}
+            >
+              <Link2 className="size-4" />
+            </Button>
             <Button size="icon" className="size-9 shrink-0 rounded-full" asChild>
               <Link to="/cookbook/new" aria-label="Dodaj przepis">
                 <Plus className="size-4" />
@@ -55,6 +66,8 @@ function CookbookList() {
           </div>
         }
       />
+
+      <RecipeImportModal open={importOpen} onOpenChange={setImportOpen} />
 
       <div className="flex gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none]">
         {tags.map((t) => (

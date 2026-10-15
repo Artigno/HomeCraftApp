@@ -12,6 +12,7 @@ import type {
   NotificationPreferences,
   Purchase,
   ReceiptParseResult,
+  RecipeImportStatus,
   ShoppingItem,
   ShoppingSuggestion,
 } from "./types";
@@ -469,6 +470,40 @@ export async function apiParseReceipt(
       : { ok: false, status: res.status };
   }
   return { ok: true, data: (await res.json()) as ReceiptParseResult };
+}
+
+/** POST /recipes/imports — kicks off an async import job, returns the pending row immediately (202). */
+export async function apiStartRecipeImport(
+  url: string,
+): Promise<
+  { ok: true; data: RecipeImportStatus } | { ok: false; status: number; message?: string }
+> {
+  const res = await fetch(`${API_BASE}/recipes/imports`, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ url }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => undefined)) as { message?: string } | undefined;
+    return body?.message
+      ? { ok: false, status: res.status, message: body.message }
+      : { ok: false, status: res.status };
+  }
+  return { ok: true, data: (await res.json()) as RecipeImportStatus };
+}
+
+/** GET /recipes/imports/{id} — poll target; 404 means not found or wrong household. */
+export async function apiGetRecipeImport(
+  id: string,
+): Promise<{ ok: true; data: RecipeImportStatus } | { ok: false; status: number }> {
+  const res = await fetch(`${API_BASE}/recipes/imports/${id}`, {
+    method: "GET",
+    headers: { Accept: "application/json", ...authHeaders() },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) return { ok: false, status: res.status };
+  return { ok: true, data: (await res.json()) as RecipeImportStatus };
 }
 
 /** POST /shopping-items/categorize — synchronous, caller needs the reordered list immediately. */

@@ -34,6 +34,24 @@ export interface Recipe {
   steps: string[];
 }
 
+/** GET/POST /recipes/imports — draft recipe scraped/structured from a
+ * pasted external link, shape matches Recipe minus `id`/`tin_id`/`tags`. */
+export interface RecipeImportDraft {
+  title: string;
+  ingredients: RecipeIngredient[];
+  steps: string[];
+  prep_minutes: number;
+  servings: number;
+}
+
+export interface RecipeImportStatus {
+  id: string;
+  status: "pending" | "ready" | "failed";
+  draft: RecipeImportDraft | null;
+  error: string | null;
+  updated_at: string;
+}
+
 export type TinShape = "round" | "rectangular";
 
 export interface Tin {

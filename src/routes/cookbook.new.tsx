@@ -1,7 +1,8 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,9 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { apiGetRecipeImport } from "@/lib/api/client";
 import { useHomeSync } from "@/lib/store";
 
+const searchSchema = z.object({
+  importId: z.string().optional(),
+});
+
 export const Route = createFileRoute("/cookbook/new")({
+  validateSearch: searchSchema,
   head: () => ({
     meta: [{ title: "Nowy przepis — HomeSync" }],
   }),
@@ -29,6 +36,7 @@ interface IngredientRow {
 function NewRecipePage() {
   const { tins, addRecipe } = useHomeSync();
   const navigate = useNavigate();
+  const { importId } = Route.useSearch();
 
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState("🍽️");
@@ -38,6 +46,28 @@ function NewRecipePage() {
   const [tinId, setTinId] = useState<string>("none");
   const [ingredients, setIngredients] = useState<IngredientRow[]>([{ name: "", amount: "" }]);
   const [steps, setSteps] = useState<string[]>([""]);
+  const [importedFrom, setImportedFrom] = useState(false);
+
+  // Apply the import draft once on mount only — never re-apply on a later
+  // render, so it can't clobber in-progress manual edits (e.g. a back-nav
+  // into a half-filled form while the search param is still present).
+  const appliedImportRef = useRef(false);
+  useEffect(() => {
+    if (!importId || appliedImportRef.current) return;
+    appliedImportRef.current = true;
+
+    void apiGetRecipeImport(importId).then((result) => {
+      if (!result.ok || result.data.status !== "ready" || !result.data.draft) return;
+
+      const { draft } = result.data;
+      setTitle(draft.title);
+      setIngredients(draft.ingredients.length > 0 ? draft.ingredients : [{ name: "", amount: "" }]);
+      setSteps(draft.steps.length > 0 ? draft.steps : [""]);
+      setPrepMinutes(String(draft.prep_minutes));
+      setServings(String(draft.servings));
+      setImportedFrom(true);
+    });
+  }, [importId]);
 
   function updateIngredient(index: number, field: keyof IngredientRow, value: string) {
     setIngredients((rows) => rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
@@ -89,6 +119,11 @@ function NewRecipePage() {
       </div>
 
       <div className="flex flex-col gap-4 px-4 pb-28 pt-3">
+        {importedFrom && (
+          <div className="rounded-xl bg-primary/10 px-3 py-2 text-sm text-primary">
+            Zaimportowano z linku — sprawdź i zapisz
+          </div>
+        )}
         <div className="flex gap-3">
           <Input
             value={emoji}
