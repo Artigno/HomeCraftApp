@@ -86,6 +86,8 @@ export interface PurchaseLine {
   id?: number;
   name: string;
   price: number;
+  qty?: number;
+  unit_price?: number;
   shopping_item_id?: string | null;
   shopping_item_name?: string | null;
 }

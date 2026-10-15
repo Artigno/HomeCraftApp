@@ -126,6 +126,11 @@ export function PurchaseDetailModal({
                 <span className="min-w-0 flex-1 truncate">{line.name}</span>
                 <span className="shrink-0 font-medium">{line.price.toFixed(2)} zł</span>
               </div>
+              {line.qty !== undefined && line.unit_price !== undefined && line.qty !== 1 && (
+                <span className="text-xs text-muted-foreground">
+                  {line.qty} × {line.unit_price.toFixed(2)} zł
+                </span>
+              )}
               <Select
                 value={line.shopping_item_id ?? UNLINKED}
                 onValueChange={(value) => relink(line.id, value)}
