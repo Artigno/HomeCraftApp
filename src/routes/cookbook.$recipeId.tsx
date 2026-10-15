@@ -1,6 +1,6 @@
 import { Link, createFileRoute, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { ChevronLeft, Clock, ListPlus, Ruler, TriangleAlert, Users } from "lucide-react";
+import { ChevronLeft, Clock, ListPlus, Pencil, Ruler, TriangleAlert, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -82,7 +82,15 @@ function RecipeDetail() {
         >
           <ChevronLeft className="size-6" />
         </Link>
-        <p className="font-semibold">{recipe.title}</p>
+        <p className="flex-1 font-semibold">{recipe.title}</p>
+        <Link
+          to="/cookbook/$recipeId/edit"
+          params={{ recipeId: recipe.id }}
+          aria-label="Edytuj przepis"
+          className="flex size-10 items-center justify-center rounded-full text-foreground active:scale-90"
+        >
+          <Pencil className="size-5" />
+        </Link>
       </div>
 
       <div className="px-4">

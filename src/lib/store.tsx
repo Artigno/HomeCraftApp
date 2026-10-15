@@ -67,6 +67,7 @@ interface StoreValue extends HomeSyncState {
   categorizeShoppingItems: () => Promise<boolean>;
   daysSincePurchase: (name: string) => number | undefined;
   addRecipe: (recipe: Omit<Recipe, "id">) => void;
+  updateRecipe: (recipeId: string, patch: Partial<Omit<Recipe, "id">>) => void;
   addTin: (tin: Omit<Tin, "id">) => void;
   removeTin: (id: string) => void;
 }
@@ -463,6 +464,13 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         const created: Recipe = { ...recipe, id: crypto.randomUUID() };
         setState((s) => ({ ...s, recipes: [created, ...s.recipes] }));
         enqueue("POST", "/recipes", created);
+      },
+      updateRecipe: (recipeId, patch) => {
+        setState((s) => ({
+          ...s,
+          recipes: s.recipes.map((r) => (r.id === recipeId ? { ...r, ...patch } : r)),
+        }));
+        enqueue("PATCH", `/recipes/${recipeId}`, patch);
       },
       addTin: (tin) => {
         const created: Tin = { ...tin, id: crypto.randomUUID() };

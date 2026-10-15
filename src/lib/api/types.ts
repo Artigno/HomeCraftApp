@@ -38,6 +38,7 @@ export interface Recipe {
  * pasted external link, shape matches Recipe minus `id`/`tin_id`/`tags`. */
 export interface RecipeImportDraft {
   title: string;
+  emoji: string;
   ingredients: RecipeIngredient[];
   steps: string[];
   prep_minutes: number;

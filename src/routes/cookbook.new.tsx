@@ -61,6 +61,7 @@ function NewRecipePage() {
 
       const { draft } = result.data;
       setTitle(draft.title);
+      if (draft.emoji) setEmoji(draft.emoji);
       setIngredients(draft.ingredients.length > 0 ? draft.ingredients : [{ name: "", amount: "" }]);
       setSteps(draft.steps.length > 0 ? draft.steps : [""]);
       setPrepMinutes(String(draft.prep_minutes));
