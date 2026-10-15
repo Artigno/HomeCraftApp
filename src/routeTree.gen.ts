@@ -22,7 +22,7 @@ import { Route as CookbookIndexRouteImport } from './routes/cookbook.index'
 import { Route as CookbookRecipeIdRouteImport } from './routes/cookbook.$recipeId'
 import { Route as CookbookNewRouteImport } from './routes/cookbook.new'
 import { Route as CookbookTinsRouteImport } from './routes/cookbook.tins'
-import { Route as CookbookRecipeIdEditRouteImport } from './routes/cookbook.$recipeId.edit'
+import { Route as CookbookRecipeIdEditRouteImport } from './routes/cookbook.$recipeId_.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -90,9 +90,9 @@ const CookbookTinsRoute = CookbookTinsRouteImport.update({
   getParentRoute: () => CookbookRoute,
 } as any)
 const CookbookRecipeIdEditRoute = CookbookRecipeIdEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
-  getParentRoute: () => CookbookRecipeIdRoute,
+  id: '/$recipeId_/edit',
+  path: '/$recipeId/edit',
+  getParentRoute: () => CookbookRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -105,7 +105,7 @@ export interface FileRoutesByFullPath {
   '/shopping': typeof ShoppingRoute
   '/waitroom': typeof WaitroomRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/cookbook/$recipeId': typeof CookbookRecipeIdRouteWithChildren
+  '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
   '/cookbook/new': typeof CookbookNewRoute
   '/cookbook/tins': typeof CookbookTinsRoute
   '/cookbook/': typeof CookbookIndexRoute
@@ -120,7 +120,7 @@ export interface FileRoutesByTo {
   '/shopping': typeof ShoppingRoute
   '/waitroom': typeof WaitroomRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/cookbook/$recipeId': typeof CookbookRecipeIdRouteWithChildren
+  '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
   '/cookbook/new': typeof CookbookNewRoute
   '/cookbook/tins': typeof CookbookTinsRoute
   '/cookbook': typeof CookbookIndexRoute
@@ -137,11 +137,11 @@ export interface FileRoutesById {
   '/shopping': typeof ShoppingRoute
   '/waitroom': typeof WaitroomRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/cookbook/$recipeId': typeof CookbookRecipeIdRouteWithChildren
+  '/cookbook/$recipeId': typeof CookbookRecipeIdRoute
   '/cookbook/new': typeof CookbookNewRoute
   '/cookbook/tins': typeof CookbookTinsRoute
   '/cookbook/': typeof CookbookIndexRoute
-  '/cookbook/$recipeId/edit': typeof CookbookRecipeIdEditRoute
+  '/cookbook/$recipeId_/edit': typeof CookbookRecipeIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -190,7 +190,7 @@ export interface FileRouteTypes {
     | '/cookbook/new'
     | '/cookbook/tins'
     | '/cookbook/'
-    | '/cookbook/$recipeId/edit'
+    | '/cookbook/$recipeId_/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -298,39 +298,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CookbookTinsRouteImport
       parentRoute: typeof CookbookRoute
     }
-    '/cookbook/$recipeId/edit': {
-      id: '/cookbook/$recipeId/edit'
-      path: '/edit'
+    '/cookbook/$recipeId_/edit': {
+      id: '/cookbook/$recipeId_/edit'
+      path: '/$recipeId/edit'
       fullPath: '/cookbook/$recipeId/edit'
       preLoaderRoute: typeof CookbookRecipeIdEditRouteImport
-      parentRoute: typeof CookbookRecipeIdRoute
+      parentRoute: typeof CookbookRoute
     }
   }
 }
 
-interface CookbookRecipeIdRouteChildren {
-  CookbookRecipeIdEditRoute: typeof CookbookRecipeIdEditRoute
-}
-
-const CookbookRecipeIdRouteChildren: CookbookRecipeIdRouteChildren = {
-  CookbookRecipeIdEditRoute: CookbookRecipeIdEditRoute,
-}
-
-const CookbookRecipeIdRouteWithChildren =
-  CookbookRecipeIdRoute._addFileChildren(CookbookRecipeIdRouteChildren)
-
 interface CookbookRouteChildren {
-  CookbookRecipeIdRoute: typeof CookbookRecipeIdRouteWithChildren
+  CookbookRecipeIdRoute: typeof CookbookRecipeIdRoute
   CookbookNewRoute: typeof CookbookNewRoute
   CookbookTinsRoute: typeof CookbookTinsRoute
   CookbookIndexRoute: typeof CookbookIndexRoute
+  CookbookRecipeIdEditRoute: typeof CookbookRecipeIdEditRoute
 }
 
 const CookbookRouteChildren: CookbookRouteChildren = {
-  CookbookRecipeIdRoute: CookbookRecipeIdRouteWithChildren,
+  CookbookRecipeIdRoute: CookbookRecipeIdRoute,
   CookbookNewRoute: CookbookNewRoute,
   CookbookTinsRoute: CookbookTinsRoute,
   CookbookIndexRoute: CookbookIndexRoute,
+  CookbookRecipeIdEditRoute: CookbookRecipeIdEditRoute,
 }
 
 const CookbookRouteWithChildren = CookbookRoute._addFileChildren(

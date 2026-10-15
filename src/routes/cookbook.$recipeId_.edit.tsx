@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useHomeSync } from "@/lib/store";
 
-export const Route = createFileRoute("/cookbook/$recipeId/edit")({
+export const Route = createFileRoute("/cookbook/$recipeId_/edit")({
   head: () => ({
     meta: [{ title: "Edytuj przepis — HomeSync" }],
   }),
@@ -27,7 +27,7 @@ interface IngredientRow {
 }
 
 function EditRecipePage() {
-  const { recipeId } = useParams({ from: "/cookbook/$recipeId/edit" });
+  const { recipeId } = useParams({ from: "/cookbook/$recipeId_/edit" });
   const { recipes, tins, updateRecipe } = useHomeSync();
   const navigate = useNavigate();
   const recipe = recipes.find((r) => r.id === recipeId);
