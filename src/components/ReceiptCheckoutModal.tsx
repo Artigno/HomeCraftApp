@@ -39,6 +39,7 @@ export function ReceiptCheckoutModal({
   const [category, setCategory] = useState(DEFAULT_CATEGORY);
   const [lines, setLines] = useState<ReceiptParseLine[]>([]);
   const [purchasedAt, setPurchasedAt] = useState<string>("");
+  const [receiptImagePath, setReceiptImagePath] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
 
   // Reset the form when the dialog opens on a *different* set of bought
@@ -63,6 +64,7 @@ export function ReceiptCheckoutModal({
     setCategory(purchases[0]?.category ?? DEFAULT_CATEGORY);
     setLines([]);
     setPurchasedAt("");
+    setReceiptImagePath(undefined);
     setSubmitting(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, boughtItems]);
@@ -91,6 +93,7 @@ export function ReceiptCheckoutModal({
       setTotal(String(result.data.total));
       setLines(result.data.lines);
       setPurchasedAt(result.data.purchased_at);
+      setReceiptImagePath(result.data.receipt_image_path);
       setStep("review");
     } catch {
       toast.error(GENERIC_PARSE_ERROR);
@@ -133,6 +136,7 @@ export function ReceiptCheckoutModal({
         shopping_item_id: l.shopping_item_id,
       })),
       purchased_at: purchasedAt,
+      ...(receiptImagePath ? { receipt_image_path: receiptImagePath } : {}),
     });
     toast.success("Zakupy zapisane", { description: `${lines.length} produktów` });
     onOpenChange(false);

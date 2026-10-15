@@ -57,6 +57,7 @@ interface StoreValue extends HomeSyncState {
     category: string;
     lines?: PurchaseLine[];
     purchased_at?: string;
+    receipt_image_path?: string;
   }) => Promise<void>;
   /** Clears checked-off items from the list without recording a purchase —
    * for items already accounted for in the budget some other way (e.g. a
@@ -408,7 +409,14 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         }));
         enqueue("PATCH", `/shopping-items/${id}`, patch);
       },
-      completePurchase: async ({ store, total, category, lines, purchased_at }) => {
+      completePurchase: async ({
+        store,
+        total,
+        category,
+        lines,
+        purchased_at,
+        receipt_image_path,
+      }) => {
         haptic(25);
         const bought = state.shopping.filter((i) => i.done);
         const purchase: Purchase = {
@@ -423,6 +431,7 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
               name: i.name,
               price: Math.round((total / Math.max(bought.length, 1)) * 100) / 100,
             })),
+          ...(receipt_image_path ? { receipt_image_path } : {}),
         };
         setState((s) => ({
           ...s,

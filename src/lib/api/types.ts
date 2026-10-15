@@ -104,6 +104,10 @@ export interface ReceiptParseResult {
   total: number;
   purchased_at: string;
   lines: ReceiptParseLine[];
+  /** S3 path (not a URL) the backend just uploaded the receipt image to —
+   * forward verbatim to POST /receipts/process so it gets persisted on the
+   * purchase; /purchases later returns a signed receipt_image_url from it. */
+  receipt_image_path?: string;
 }
 
 export interface Purchase {
@@ -117,6 +121,10 @@ export interface Purchase {
   // never cache/persist this field, always use whatever came with the
   // purchase on its most recent fetch.
   receipt_image_url?: string | null;
+  // Write-only: the S3 path from a prior /receipts/parse call, forwarded
+  // on create so the backend persists it. Never populated on a GET
+  // response (that returns receipt_image_url instead).
+  receipt_image_path?: string;
 }
 
 export interface HouseholdMember {
