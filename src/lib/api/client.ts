@@ -11,6 +11,7 @@ import { clearAuthToken, getAuthToken, isAuthenticated } from "../auth";
 import type {
   NotificationPreferences,
   Purchase,
+  PurchaseLine,
   ReceiptParseResult,
   RecipeImportStatus,
   ShoppingItem,
@@ -567,6 +568,28 @@ export async function apiRemoveMember(id: number): Promise<{ ok: boolean; status
     signal: AbortSignal.timeout(10_000),
   });
   return { ok: res.ok, status: res.status };
+}
+
+/**
+ * PATCH /purchases/{purchaseId}/lines/{lineId} — corrects which shopping-item
+ * a receipt line is matched to (or clears it with `null`). Direct fetch, not
+ * queued through enqueue(): a 422/404 here is an immediately-knowable
+ * validation failure the user should see right away, not something to
+ * silently retry later from the offline queue.
+ */
+export async function apiPatchPurchaseLine(
+  purchaseId: string,
+  lineId: number,
+  shoppingItemId: string | null,
+): Promise<{ ok: true; data: PurchaseLine } | { ok: false; status: number }> {
+  const res = await fetch(`${API_BASE}/purchases/${purchaseId}/lines/${lineId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Accept: "application/json", ...authHeaders() },
+    body: JSON.stringify({ shopping_item_id: shoppingItemId }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) return { ok: false, status: res.status };
+  return { ok: true, data: (await res.json()) as PurchaseLine };
 }
 
 export interface PurchaseFilters {

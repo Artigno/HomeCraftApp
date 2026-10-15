@@ -83,9 +83,11 @@ export interface ShoppingItem {
 }
 
 export interface PurchaseLine {
+  id?: number;
   name: string;
   price: number;
   shopping_item_id?: string | null;
+  shopping_item_name?: string | null;
 }
 
 export interface ReceiptParseLine {
