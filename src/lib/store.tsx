@@ -10,8 +10,10 @@ import {
 import type { ReactNode } from "react";
 import {
   apiCategorizeShoppingItems,
+  apiCreateShoppingTag,
   apiGet,
   apiGetShoppingItems,
+  apiPatchShoppingTag,
   enqueue,
   flushQueue,
   readQueue,
@@ -25,6 +27,7 @@ import type {
   PurchaseLine,
   Recipe,
   ShoppingItem,
+  ShoppingTag,
   TaskStatus,
   Tin,
 } from "./api/types";
@@ -67,6 +70,11 @@ interface StoreValue extends HomeSyncState {
    * no optimistic local sort. Returns false (list left untouched) on failure. */
   categorizeShoppingItems: () => Promise<boolean>;
   daysSincePurchase: (name: string) => number | undefined;
+  /** Returns false (name rejected — likely a duplicate within the household) without touching state. */
+  addTag: (name: string) => Promise<boolean>;
+  renameTag: (id: number, name: string) => Promise<boolean>;
+  /** Sends one PATCH per tag whose sort_order actually changed vs. current state. */
+  reorderTags: (orderedTags: ShoppingTag[]) => Promise<void>;
   addRecipe: (recipe: Omit<Recipe, "id">) => void;
   updateRecipe: (recipeId: string, patch: Partial<Omit<Recipe, "id">>) => void;
   addTin: (tin: Omit<Tin, "id">) => void;
@@ -112,12 +120,13 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       // branch; an incremental sync with no stored cursor falls back to the
       // same since-omitted full resync rather than an epoch sentinel.
       const since = incremental ? readShoppingCursor() || undefined : undefined;
-      const [tasks, recipes, shoppingResult, purchases, tins] = await Promise.all([
+      const [tasks, recipes, shoppingResult, purchases, tins, tags] = await Promise.all([
         apiGet<MaintenanceTask[] | null>("/maintenance-tasks", null),
         apiGet<Recipe[] | null>("/recipes", null),
         apiGetShoppingItems(since),
         apiGet<Purchase[] | null>("/purchases", null),
         apiGet<Tin[] | null>("/tins", null),
+        apiGet<ShoppingTag[] | null>("/shopping-tags", null),
       ]);
       // null means the request failed (offline, 401, ...) — apiGet already
       // handles those; keep whatever's local and let the queue sync later.
@@ -126,7 +135,8 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         recipes === null ||
         shoppingResult === null ||
         purchases === null ||
-        tins === null
+        tins === null ||
+        tags === null
       ) {
         return;
       }
@@ -148,6 +158,8 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
 
       const backendHasData =
         tasks.length + recipes.length + shopping.length + purchases.length + tins.length > 0;
+      // tags intentionally excluded from this seed-trigger check — a brand
+      // new household has 0 tags too, and tags have no local seed to push.
       if (!backendHasData && !incremental) {
         // Brand-new account with nothing on the backend yet: seed it once,
         // exactly like a fresh device would, so there's demo content either way.
@@ -215,6 +227,7 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
           shopping: nextShopping,
           purchases,
           tins,
+          tags,
           logs: [],
         };
       });
@@ -469,6 +482,34 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         return true;
       },
       daysSincePurchase,
+      addTag: async (name) => {
+        const result = await apiCreateShoppingTag(name);
+        if (!result.ok) return false;
+        setState((s) => ({ ...s, tags: [...s.tags, result.data] }));
+        return true;
+      },
+      renameTag: async (id, name) => {
+        const result = await apiPatchShoppingTag(id, { name });
+        if (!result.ok) return false;
+        setState((s) => ({
+          ...s,
+          tags: s.tags.map((t) => (t.id === id ? result.data : t)),
+        }));
+        return true;
+      },
+      reorderTags: async (orderedTags) => {
+        const byId = new Map(state.tags.map((t) => [t.id, t]));
+        const changed = orderedTags
+          .map((t, index) => ({ id: t.id, sort_order: index }))
+          .filter(({ id, sort_order }) => byId.get(id)?.sort_order !== sort_order);
+        setState((s) => ({
+          ...s,
+          tags: orderedTags.map((t, index) => ({ ...t, sort_order: index })),
+        }));
+        await Promise.all(
+          changed.map(({ id, sort_order }) => apiPatchShoppingTag(id, { sort_order })),
+        );
+      },
       addRecipe: (recipe) => {
         const created: Recipe = { ...recipe, id: crypto.randomUUID() };
         setState((s) => ({ ...s, recipes: [created, ...s.recipes] }));

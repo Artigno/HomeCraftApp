@@ -16,6 +16,7 @@ import type {
   RecipeImportStatus,
   ShoppingItem,
   ShoppingSuggestion,
+  ShoppingTag,
 } from "./types";
 
 const API_BASE =
@@ -624,6 +625,60 @@ export async function apiGetPurchases(filters: PurchaseFilters): Promise<Purchas
     return (await res.json()) as Purchase[];
   } catch {
     return null;
+  }
+}
+
+/**
+ * POST /shopping-tags — synchronous: the caller needs the server-assigned
+ * id/sort_order immediately to let the new tag be renamed/reordered right
+ * after creation. `name` must be unique per household (case-insensitive) —
+ * a 422 surfaces as `ok: false`.
+ */
+export async function apiCreateShoppingTag(
+  name: string,
+): Promise<{ ok: true; data: ShoppingTag } | { ok: false; status: number }> {
+  try {
+    const res = await fetch(`${API_BASE}/shopping-tags`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...authHeaders(),
+      },
+      body: JSON.stringify({ name }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return { ok: false, status: res.status };
+    return { ok: true, data: (await res.json()) as ShoppingTag };
+  } catch {
+    return { ok: false, status: 0 };
+  }
+}
+
+/**
+ * PATCH /shopping-tags/{id} — synchronous rename/reorder. No server-side
+ * batch-renumber: a reorder sends one PATCH per tag whose sort_order
+ * actually changed, same convention as shopping-item reordering.
+ */
+export async function apiPatchShoppingTag(
+  id: number,
+  patch: Partial<Pick<ShoppingTag, "name" | "sort_order">>,
+): Promise<{ ok: true; data: ShoppingTag } | { ok: false; status: number }> {
+  try {
+    const res = await fetch(`${API_BASE}/shopping-tags/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...authHeaders(),
+      },
+      body: JSON.stringify(patch),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return { ok: false, status: res.status };
+    return { ok: true, data: (await res.json()) as ShoppingTag };
+  } catch {
+    return { ok: false, status: 0 };
   }
 }
 

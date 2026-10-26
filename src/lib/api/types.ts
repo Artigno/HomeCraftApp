@@ -66,6 +66,16 @@ export interface Tin {
   notes?: string;
 }
 
+/** GET/POST/PATCH /shopping-tags — household's shopping-list tabs (Biedronka,
+ * Silla, Rossman, ...). No DELETE: tags can't be removed (deliberate). */
+export interface ShoppingTag {
+  id: number;
+  name: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ShoppingItem {
   id: string;
   name: string;
@@ -205,4 +215,5 @@ export interface HomeSyncState {
   shopping: ShoppingItem[];
   purchases: Purchase[];
   tins: Tin[];
+  tags: ShoppingTag[];
 }

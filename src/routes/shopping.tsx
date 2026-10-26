@@ -13,6 +13,7 @@ import {
 import {
   SortableContext,
   arrayMove,
+  horizontalListSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
@@ -45,7 +46,7 @@ import { useSwipeToDelete } from "@/hooks/use-swipe-to-delete";
 import { apiDismissShoppingSuggestion, apiGetShoppingSuggestions } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { useHomeSync } from "@/lib/store";
-import type { ShoppingItem, ShoppingSuggestion } from "@/lib/api/types";
+import type { ShoppingItem, ShoppingSuggestion, ShoppingTag } from "@/lib/api/types";
 
 export const Route = createFileRoute("/shopping")({
   head: () => ({
@@ -62,14 +63,28 @@ export const Route = createFileRoute("/shopping")({
 function ShoppingList() {
   const {
     shopping,
+    tags,
     addShoppingItems,
     daysSincePurchase,
     updateShoppingItem,
     categorizeShoppingItems,
     discardCompletedShoppingItems,
+    addTag,
+    renameTag,
+    reorderTags,
   } = useHomeSync();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [categorizing, setCategorizing] = useState(false);
+  // UI-only selection — no item filtering wired yet (backend's item tag_id
+  // scoping lands later today); this just tracks which tab reads as active.
+  const [activeTagId, setActiveTagId] = useState<number | null>(null);
+  useEffect(() => {
+    if (activeTagId !== null && !tags.some((t) => t.id === activeTagId)) {
+      setActiveTagId(null);
+    } else if (activeTagId === null && tags.length > 0) {
+      setActiveTagId(tags.slice().sort((a, b) => a.sort_order - b.sort_order)[0]!.id);
+    }
+  }, [tags, activeTagId]);
 
   // Server-owned now (GET /shopping-suggestions): bought >2 times, due by
   // avg interval, not already on the list, not in the server's post-dismiss
@@ -277,6 +292,15 @@ function ShoppingList() {
         }
       />
 
+      <TagTabBar
+        tags={tags}
+        activeTagId={activeTagId}
+        onSelect={setActiveTagId}
+        onAdd={addTag}
+        onRename={renameTag}
+        onReorder={reorderTags}
+      />
+
       {suggestion && (
         <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-2xl bg-muted px-4 py-3">
           <p className="text-sm font-medium">Kończy się {suggestion.name}? Dodaj do listy</p>
@@ -361,6 +385,204 @@ function ShoppingList() {
         boughtItems={shopping.filter((i) => i.done)}
       />
     </div>
+  );
+}
+
+/** Tag management tab bar: view/select, add, rename (tap the active tab),
+ * and drag-reorder tags. No delete (backend non-goal) and no per-tag item
+ * filtering yet — selecting a tab only changes which tab reads as active,
+ * wired up once the backend's item tag_id scoping lands. */
+function TagTabBar({
+  tags,
+  activeTagId,
+  onSelect,
+  onAdd,
+  onRename,
+  onReorder,
+}: {
+  tags: ShoppingTag[];
+  activeTagId: number | null;
+  onSelect: (id: number) => void;
+  onAdd: (name: string) => Promise<boolean>;
+  onRename: (id: number, name: string) => Promise<boolean>;
+  onReorder: (orderedTags: ShoppingTag[]) => Promise<void>;
+}) {
+  const sorted = useMemo(() => [...tags].sort((a, b) => a.sort_order - b.sort_order), [tags]);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 400, tolerance: 10 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = sorted.findIndex((t) => String(t.id) === active.id);
+    const newIndex = sorted.findIndex((t) => String(t.id) === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    void onReorder(arrayMove(sorted, oldIndex, newIndex));
+  }
+
+  return (
+    <DndContext id="shopping-tags-dnd" sensors={sensors} onDragEnd={handleDragEnd}>
+      <SortableContext
+        items={sorted.map((t) => String(t.id))}
+        strategy={horizontalListSortingStrategy}
+      >
+        <div
+          className="flex gap-2 overflow-x-auto px-4 pt-3 pb-1"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          {sorted.map((tag) => (
+            <TagTab
+              key={tag.id}
+              tag={tag}
+              active={tag.id === activeTagId}
+              onSelect={() => onSelect(tag.id)}
+              onRename={(name) => onRename(tag.id, name)}
+            />
+          ))}
+          <AddTagButton onAdd={onAdd} />
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function TagTab({
+  tag,
+  active,
+  onSelect,
+  onRename,
+}: {
+  tag: ShoppingTag;
+  active: boolean;
+  onSelect: () => void;
+  onRename: (name: string) => Promise<boolean>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(tag.name);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: String(tag.id),
+    disabled: editing,
+  });
+
+  async function commit() {
+    const trimmed = draft.trim();
+    setEditing(false);
+    if (!trimmed || trimmed === tag.name) {
+      setDraft(tag.name);
+      return;
+    }
+    const ok = await onRename(trimmed);
+    if (!ok) {
+      setDraft(tag.name);
+      toast.error("Nie udało się zmienić nazwy tagu. Sprawdź, czy taka nazwa już nie istnieje.");
+    }
+  }
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform) ?? undefined,
+    transition,
+    ...(isDragging ? { opacity: 0.5 } : {}),
+  };
+
+  if (editing) {
+    return (
+      <Input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            void commit();
+          } else if (e.key === "Escape") {
+            setDraft(tag.name);
+            setEditing(false);
+          }
+        }}
+        onBlur={() => void commit()}
+        className="h-9 w-28 shrink-0 rounded-full px-3 text-sm"
+      />
+    );
+  }
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      {...attributes}
+      {...listeners}
+      style={style}
+      onClick={() => {
+        if (active) {
+          setDraft(tag.name);
+          setEditing(true);
+        } else {
+          onSelect();
+        }
+      }}
+      className={cn(
+        "h-9 shrink-0 cursor-grab touch-none whitespace-nowrap rounded-full px-4 text-sm font-medium active:cursor-grabbing",
+        active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+      )}
+    >
+      {tag.name}
+    </button>
+  );
+}
+
+function AddTagButton({ onAdd }: { onAdd: (name: string) => Promise<boolean> }) {
+  const [active, setActive] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function commit() {
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      setActive(false);
+      return;
+    }
+    setSubmitting(true);
+    const ok = await onAdd(trimmed);
+    setSubmitting(false);
+    if (ok) {
+      setDraft("");
+      setActive(false);
+    } else {
+      toast.error("Nie udało się dodać tagu. Sprawdź, czy taki tag już nie istnieje.");
+    }
+  }
+
+  if (!active) {
+    return (
+      <button
+        type="button"
+        onClick={() => setActive(true)}
+        aria-label="Dodaj tag"
+        className="flex h-9 shrink-0 items-center justify-center gap-1 rounded-full border-2 border-dashed border-border px-3 text-sm text-muted-foreground active:scale-95"
+      >
+        <Plus className="size-4" />
+      </button>
+    );
+  }
+
+  return (
+    <Input
+      autoFocus
+      disabled={submitting}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          void commit();
+        }
+      }}
+      onBlur={() => void commit()}
+      placeholder="Nazwa tagu"
+      className="h-9 w-28 shrink-0 rounded-full px-3 text-sm"
+    />
   );
 }
 

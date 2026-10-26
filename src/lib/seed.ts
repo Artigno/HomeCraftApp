@@ -211,5 +211,6 @@ export function createSeedState(): HomeSyncState {
       },
     ],
     tins: [],
+    tags: [],
   };
 }
