@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import {
   apiCategorizeShoppingItems,
   apiCreateShoppingTag,
+  apiDeleteShoppingTag,
   apiGet,
   apiGetShoppingItems,
   apiPatchShoppingTag,
@@ -84,6 +85,12 @@ interface StoreValue extends HomeSyncState {
   renameTag: (id: string, name: string) => Promise<boolean>;
   /** Sends one PATCH per tag whose sort_order actually changed vs. current state. */
   reorderTags: (orderedTags: ShoppingTag[]) => Promise<void>;
+  /** No cascade: backend 409s if the tag still has items. Returns
+   * `{ok:false, conflict:true}` for that case so the caller can show a
+   * distinct "still has items" message instead of a generic error. On
+   * success, if the deleted tag was active, switches to the first
+   * remaining tag (or null if none left) and refetches its items. */
+  removeTag: (id: string) => Promise<{ ok: true } | { ok: false; conflict: boolean }>;
   addRecipe: (recipe: Omit<Recipe, "id">) => void;
   updateRecipe: (recipeId: string, patch: Partial<Omit<Recipe, "id">>) => void;
   addTin: (tin: Omit<Tin, "id">) => void;
@@ -574,6 +581,24 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         await Promise.all(
           changed.map(({ id, sort_order }) => apiPatchShoppingTag(id, { sort_order })),
         );
+      },
+      removeTag: async (id) => {
+        const result = await apiDeleteShoppingTag(id);
+        if (!result.ok) return { ok: false, conflict: result.conflict };
+        const remaining = state.tags.filter((t) => t.id !== id);
+        setState((s) => ({ ...s, tags: remaining }));
+        if (id === activeTagId) {
+          const sorted = [...remaining].sort((a, b) => a.sort_order - b.sort_order);
+          const nextTagId = sorted[0]?.id ?? null;
+          setActiveTagIdState(nextTagId);
+          writeActiveTagId(nextTagId);
+          if (nextTagId !== null) {
+            void fetchItemsForTag(nextTagId, { incremental: false });
+          } else {
+            setState((s) => ({ ...s, shopping: [] }));
+          }
+        }
+        return { ok: true };
       },
       addRecipe: (recipe) => {
         const created: Recipe = { ...recipe, id: crypto.randomUUID() };

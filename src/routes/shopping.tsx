@@ -74,6 +74,7 @@ function ShoppingList() {
     addTag,
     renameTag,
     reorderTags,
+    removeTag,
   } = useHomeSync();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [categorizing, setCategorizing] = useState(false);
@@ -291,6 +292,7 @@ function ShoppingList() {
         onAdd={addTag}
         onRename={renameTag}
         onReorder={reorderTags}
+        onDelete={removeTag}
       />
 
       {suggestion && (
@@ -391,6 +393,7 @@ function TagTabBar({
   onAdd,
   onRename,
   onReorder,
+  onDelete,
 }: {
   tags: ShoppingTag[];
   activeTagId: string | null;
@@ -398,6 +401,7 @@ function TagTabBar({
   onAdd: (name: string) => Promise<boolean>;
   onRename: (id: string, name: string) => Promise<boolean>;
   onReorder: (orderedTags: ShoppingTag[]) => Promise<void>;
+  onDelete: (id: string) => Promise<{ ok: true } | { ok: false; conflict: boolean }>;
 }) {
   const sorted = useMemo(() => [...tags].sort((a, b) => a.sort_order - b.sort_order), [tags]);
   const sensors = useSensors(
@@ -428,6 +432,7 @@ function TagTabBar({
               active={tag.id === activeTagId}
               onSelect={() => onSelect(tag.id)}
               onRename={(name) => onRename(tag.id, name)}
+              onDelete={() => onDelete(tag.id)}
             />
           ))}
           <AddTagButton onAdd={onAdd} />
@@ -442,14 +447,38 @@ function TagTab({
   active,
   onSelect,
   onRename,
+  onDelete,
 }: {
   tag: ShoppingTag;
   active: boolean;
   onSelect: () => void;
   onRename: (name: string) => Promise<boolean>;
+  onDelete: () => Promise<{ ok: true } | { ok: false; conflict: boolean }>;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(tag.name);
+  const [deleting, setDeleting] = useState(false);
+  const editingRef = useRef<HTMLDivElement>(null);
+  // The rename+delete controls are wider than the tab pill and can render
+  // partly off the scrollable tab bar's right edge — scroll them fully into
+  // view so the delete button isn't hidden the moment rename mode opens.
+  useEffect(() => {
+    if (editing) editingRef.current?.scrollIntoView({ inline: "nearest", block: "nearest" });
+  }, [editing]);
+
+  async function handleDelete() {
+    if (deleting) return;
+    setDeleting(true);
+    const result = await onDelete();
+    setDeleting(false);
+    if (!result.ok) {
+      toast.error(
+        result.conflict
+          ? "Tag zawiera jeszcze produkty — usuń je najpierw."
+          : "Nie udało się usunąć tagu. Spróbuj ponownie.",
+      );
+    }
+  }
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tag.id,
     disabled: editing,
@@ -486,22 +515,37 @@ function TagTab({
 
   if (editing) {
     return (
-      <Input
-        autoFocus
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            void commit();
-          } else if (e.key === "Escape") {
-            setDraft(tag.name);
-            setEditing(false);
-          }
-        }}
-        onBlur={() => void commit()}
-        className="h-9 w-28 shrink-0 rounded-full px-3 text-sm"
-      />
+      <div ref={editingRef} className="flex shrink-0 items-center gap-1">
+        <Input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void commit();
+            } else if (e.key === "Escape") {
+              setDraft(tag.name);
+              setEditing(false);
+            }
+          }}
+          onBlur={() => void commit()}
+          className="h-9 w-24 rounded-full px-3 text-sm"
+        />
+        <button
+          type="button"
+          // Prevents the Input's onBlur (which commits a no-op rename when
+          // the draft is unchanged) from stealing focus before this click
+          // registers.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => void handleDelete()}
+          disabled={deleting}
+          aria-label="Usuń tag"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:scale-90 disabled:opacity-50"
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </div>
     );
   }
 

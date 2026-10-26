@@ -715,6 +715,28 @@ export async function apiPatchShoppingTag(
   }
 }
 
+/**
+ * DELETE /shopping-tags/{id} — synchronous. No cascade/reassignment: 409 if
+ * the tag still has items (`conflict: true`, distinct from a generic
+ * failure so the caller can show "still has items" rather than a generic
+ * error).
+ */
+export async function apiDeleteShoppingTag(
+  id: string,
+): Promise<{ ok: true } | { ok: false; status: number; conflict: boolean }> {
+  try {
+    const res = await fetch(`${API_BASE}/shopping-tags/${id}`, {
+      method: "DELETE",
+      headers: { Accept: "application/json", ...authHeaders() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return { ok: false, status: res.status, conflict: res.status === 409 };
+    return { ok: true };
+  } catch {
+    return { ok: false, status: 0, conflict: false };
+  }
+}
+
 export { API_BASE };
 
 // Retired: an earlier build queued DELETE /shopping-items/done (a bulk
