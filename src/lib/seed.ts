@@ -132,6 +132,9 @@ export function createSeedState(): HomeSyncState {
         steps: ["Pokrój warzywa.", "Dodaj fetę i oliwki.", "Skrop oliwą i wymieszaj."],
       },
     ],
+    // tag_id: 0 is a local-only placeholder — seed items are display-only
+    // demo content and never pushed to /shopping-items/batch without a real
+    // tag to assign them to (see pushSeed's tag guard in store.tsx).
     shopping: [
       {
         id: "93c354f7-5735-446c-b87d-d85c5238cd74",
@@ -141,6 +144,7 @@ export function createSeedState(): HomeSyncState {
         created_at: daysAgo(0),
         updated_at: daysAgo(0),
         sort_order: 0,
+        tag_id: "",
       },
       {
         id: "842ad2d4-394b-43d7-9a3a-2fe507228627",
@@ -151,6 +155,7 @@ export function createSeedState(): HomeSyncState {
         created_at: daysAgo(1),
         updated_at: daysAgo(1),
         sort_order: 1,
+        tag_id: "",
       },
     ],
     purchases: [

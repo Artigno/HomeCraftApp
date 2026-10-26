@@ -64,6 +64,8 @@ function ShoppingList() {
   const {
     shopping,
     tags,
+    activeTagId,
+    setActiveTag,
     addShoppingItems,
     daysSincePurchase,
     updateShoppingItem,
@@ -75,16 +77,6 @@ function ShoppingList() {
   } = useHomeSync();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [categorizing, setCategorizing] = useState(false);
-  // UI-only selection — no item filtering wired yet (backend's item tag_id
-  // scoping lands later today); this just tracks which tab reads as active.
-  const [activeTagId, setActiveTagId] = useState<number | null>(null);
-  useEffect(() => {
-    if (activeTagId !== null && !tags.some((t) => t.id === activeTagId)) {
-      setActiveTagId(null);
-    } else if (activeTagId === null && tags.length > 0) {
-      setActiveTagId(tags.slice().sort((a, b) => a.sort_order - b.sort_order)[0]!.id);
-    }
-  }, [tags, activeTagId]);
 
   // Server-owned now (GET /shopping-suggestions): bought >2 times, due by
   // avg interval, not already on the list, not in the server's post-dismiss
@@ -295,7 +287,7 @@ function ShoppingList() {
       <TagTabBar
         tags={tags}
         activeTagId={activeTagId}
-        onSelect={setActiveTagId}
+        onSelect={setActiveTag}
         onAdd={addTag}
         onRename={renameTag}
         onReorder={reorderTags}
@@ -401,10 +393,10 @@ function TagTabBar({
   onReorder,
 }: {
   tags: ShoppingTag[];
-  activeTagId: number | null;
-  onSelect: (id: number) => void;
+  activeTagId: string | null;
+  onSelect: (id: string) => void;
   onAdd: (name: string) => Promise<boolean>;
-  onRename: (id: number, name: string) => Promise<boolean>;
+  onRename: (id: string, name: string) => Promise<boolean>;
   onReorder: (orderedTags: ShoppingTag[]) => Promise<void>;
 }) {
   const sorted = useMemo(() => [...tags].sort((a, b) => a.sort_order - b.sort_order), [tags]);
@@ -416,18 +408,15 @@ function TagTabBar({
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = sorted.findIndex((t) => String(t.id) === active.id);
-    const newIndex = sorted.findIndex((t) => String(t.id) === over.id);
+    const oldIndex = sorted.findIndex((t) => t.id === active.id);
+    const newIndex = sorted.findIndex((t) => t.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
     void onReorder(arrayMove(sorted, oldIndex, newIndex));
   }
 
   return (
     <DndContext id="shopping-tags-dnd" sensors={sensors} onDragEnd={handleDragEnd}>
-      <SortableContext
-        items={sorted.map((t) => String(t.id))}
-        strategy={horizontalListSortingStrategy}
-      >
+      <SortableContext items={sorted.map((t) => t.id)} strategy={horizontalListSortingStrategy}>
         <div
           className="flex gap-2 overflow-x-auto px-4 pt-3 pb-1"
           style={{ WebkitOverflowScrolling: "touch" }}
@@ -462,7 +451,7 @@ function TagTab({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(tag.name);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: String(tag.id),
+    id: tag.id,
     disabled: editing,
   });
   // Enter's keydown commit and the blur it can trigger in the same tick

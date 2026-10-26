@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { apiGetPurchases, apiGetShoppingItems, apiPatchPurchaseLine } from "@/lib/api/client";
+import { useHomeSync } from "@/lib/store";
 import type { Purchase, ShoppingItem } from "@/lib/api/types";
 
 const UNLINKED = "__unlinked__";
@@ -32,6 +33,7 @@ export function PurchaseDetailModal({
 }) {
   const [fresh, setFresh] = useState<Purchase | null>(null);
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
+  const { activeTagId } = useHomeSync();
 
   // receipt_image_url is a temporary S3 URL (10-minute TTL) — the copy
   // already held from the list fetch may be stale by the time the user taps
@@ -46,11 +48,17 @@ export function PurchaseDetailModal({
     });
     // The picker's source list of current shopping items — reuses the same
     // endpoint that backs the shopping-list screen, per the backend handoff
-    // (no dedicated "pick a product" endpoint exists).
-    void apiGetShoppingItems().then((result) => {
+    // (no dedicated "pick a product" endpoint exists). Items are
+    // tag-partitioned (Phase 3): scoped to the active tab's items, same as
+    // the shopping-list screen itself — relinking across tags isn't offered.
+    if (activeTagId === null) {
+      setShoppingItems([]);
+      return;
+    }
+    void apiGetShoppingItems(activeTagId).then((result) => {
       setShoppingItems(result?.ok ? result.items : []);
     });
-  }, [open, purchase]);
+  }, [open, purchase, activeTagId]);
 
   const display = fresh ?? purchase;
   if (!display) return null;

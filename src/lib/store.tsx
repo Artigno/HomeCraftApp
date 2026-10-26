@@ -16,8 +16,10 @@ import {
   apiPatchShoppingTag,
   enqueue,
   flushQueue,
+  readActiveTagId,
   readQueue,
   readShoppingCursor,
+  writeActiveTagId,
   writeShoppingCursor,
 } from "./api/client";
 import type {
@@ -40,12 +42,19 @@ interface StoreValue extends HomeSyncState {
   hydrated: boolean;
   pendingSync: number;
   refresh: () => Promise<void>;
+  /** Household items are partitioned by tag (Phase 3) — null only when the
+   * household has zero tags yet (no tab to scope items into). */
+  activeTagId: string | null;
+  /** Switches the active tab and refetches that tag's items. */
+  setActiveTag: (id: string) => void;
   logTask: (taskId: string) => void;
   addTask: (task: Omit<MaintenanceTask, "id" | "last_done_at">) => void;
   removeTask: (taskId: string) => void;
   updateTask: (taskId: string, patch: Partial<Omit<MaintenanceTask, "id">>) => void;
   addShoppingItems: (
-    items: Array<Omit<ShoppingItem, "id" | "created_at" | "updated_at" | "done" | "sort_order">>,
+    items: Array<
+      Omit<ShoppingItem, "id" | "created_at" | "updated_at" | "done" | "sort_order" | "tag_id">
+    >,
   ) => void;
   toggleShoppingItem: (id: string) => void;
   removeShoppingItem: (id: string) => void;
@@ -72,7 +81,7 @@ interface StoreValue extends HomeSyncState {
   daysSincePurchase: (name: string) => number | undefined;
   /** Returns false (name rejected — likely a duplicate within the household) without touching state. */
   addTag: (name: string) => Promise<boolean>;
-  renameTag: (id: number, name: string) => Promise<boolean>;
+  renameTag: (id: string, name: string) => Promise<boolean>;
   /** Sends one PATCH per tag whose sort_order actually changed vs. current state. */
   reorderTags: (orderedTags: ShoppingTag[]) => Promise<void>;
   addRecipe: (recipe: Omit<Recipe, "id">) => void;
@@ -94,11 +103,20 @@ export function taskStatus(task: MaintenanceTask): TaskStatus {
   return "good";
 }
 
-/** Push the local seed to the backend so a brand-new account has matching rows. */
-function pushSeed(seed: HomeSyncState) {
+/** Push the local seed to the backend so a brand-new account has matching
+ * rows. `tagId` is null for a truly empty household (zero tags) — the
+ * shopping-items batch is skipped in that case since there's no tag to
+ * assign the seed items to (Phase 3 requires one); the other domains still
+ * push normally. */
+function pushSeed(seed: HomeSyncState, tagId: string | null) {
   seed.tasks.forEach((t) => enqueue("POST", "/maintenance-tasks", t));
   seed.recipes.forEach((r) => enqueue("POST", "/recipes", r));
-  if (seed.shopping.length) enqueue("POST", "/shopping-items/batch", { items: seed.shopping });
+  if (tagId !== null && seed.shopping.length) {
+    enqueue("POST", "/shopping-items/batch", {
+      tag_id: tagId,
+      items: seed.shopping.map((i) => ({ ...i, tag_id: tagId })),
+    });
+  }
   seed.purchases.forEach((p) => enqueue("POST", "/receipts/process", p));
 }
 
@@ -106,66 +124,38 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<HomeSyncState>(() => createSeedState());
   const [hydrated, setHydrated] = useState(false);
   const [pendingSync, setPendingSync] = useState(0);
+  const [activeTagId, setActiveTagIdState] = useState<string | null>(() => readActiveTagId());
   const localSeedRef = useRef<HomeSyncState | null>(null);
 
-  // Pull the canonical lists from the backend so ids/content match the
-  // server (not a locally-generated guess) — without this, every reinstall
-  // re-seeds with fresh random ids that can diverge from what's already
-  // there, and a second device never sees the first device's data at all.
-  const syncFromBackend = useCallback(
-    async (opts?: { incremental?: boolean; retriedAfterInvalidSince?: boolean }) => {
-      if (!isAuthenticated()) return;
+  // Items are tag-partitioned (Phase 3) — `state.shopping` only ever holds
+  // the ACTIVE tag's items, wholesale-replaced on tag switch. Split out from
+  // syncFromBackend below so switching tabs can refetch just this slice
+  // instead of every domain.
+  const fetchItemsForTag = useCallback(
+    async (tagId: string, opts?: { incremental?: boolean; retriedAfterInvalidSince?: boolean }) => {
       const incremental = opts?.incremental ?? false;
       // A full resync omits `since` entirely to hit the backend's unfiltered
       // branch; an incremental sync with no stored cursor falls back to the
       // same since-omitted full resync rather than an epoch sentinel.
-      const since = incremental ? readShoppingCursor() || undefined : undefined;
-      const [tasks, recipes, shoppingResult, purchases, tins, tags] = await Promise.all([
-        apiGet<MaintenanceTask[] | null>("/maintenance-tasks", null),
-        apiGet<Recipe[] | null>("/recipes", null),
-        apiGetShoppingItems(since),
-        apiGet<Purchase[] | null>("/purchases", null),
-        apiGet<Tin[] | null>("/tins", null),
-        apiGet<ShoppingTag[] | null>("/shopping-tags", null),
-      ]);
+      const since = incremental ? readShoppingCursor(tagId) || undefined : undefined;
+      const result = await apiGetShoppingItems(tagId, since);
       // null means the request failed (offline, 401, ...) — apiGet already
       // handles those; keep whatever's local and let the queue sync later.
-      if (
-        tasks === null ||
-        recipes === null ||
-        shoppingResult === null ||
-        purchases === null ||
-        tins === null ||
-        tags === null
-      ) {
-        return;
-      }
-
-      if (!shoppingResult.ok) {
-        if (shoppingResult.invalidSince && !opts?.retriedAfterInvalidSince) {
+      if (result === null) return;
+      if (!result.ok) {
+        if (result.invalidSince && !opts?.retriedAfterInvalidSince) {
           // Corrupted/invalid stored cursor — clear it and retry once as a
-          // full since-omitted fetch within the same sync pass. The
+          // full since-omitted fetch within the same pass. The
           // retriedAfterInvalidSince flag caps this at a single retry as a
           // safety net, though a since-omitted request can no longer 422.
-          writeShoppingCursor(null);
-          await syncFromBackend({ incremental: false, retriedAfterInvalidSince: true });
+          writeShoppingCursor(tagId, null);
+          await fetchItemsForTag(tagId, { incremental: false, retriedAfterInvalidSince: true });
         }
         // Non-cursor failure, or already retried once: keep local state, next
         // natural sync trigger retries.
         return;
       }
-      const shopping = shoppingResult.items;
-
-      const backendHasData =
-        tasks.length + recipes.length + shopping.length + purchases.length + tins.length > 0;
-      // tags intentionally excluded from this seed-trigger check — a brand
-      // new household has 0 tags too, and tags have no local seed to push.
-      if (!backendHasData && !incremental) {
-        // Brand-new account with nothing on the backend yet: seed it once,
-        // exactly like a fresh device would, so there's demo content either way.
-        if (localSeedRef.current) pushSeed(localSeedRef.current);
-        return;
-      }
+      const shopping = result.items;
 
       setState((s) => {
         // A toggle's PATCHes (the toggle itself + the sort_order move that
@@ -193,7 +183,8 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
           ? (() => {
               // Upsert-only: a since-cursor response has no deletion markers,
               // so a backend-side delete isn't purged from local state until
-              // the next full (mount/login) resync replaces the list wholesale.
+              // the next full (mount/login/tag-switch) resync replaces the
+              // list wholesale.
               const byId = new Map(s.shopping.map((i) => [i.id, i]));
               for (const item of shopping) byId.set(item.id, applyQueueOverride(item));
               return [...byId.values()];
@@ -204,13 +195,14 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
               // newly-added item whose /shopping-items/batch POST hasn't
               // flushed yet would vanish until that create lands server-side.
               // Carry forward any local item still covered by a pending
-              // batch-create and absent from the fetched set.
+              // batch-create (for this tag) and absent from the fetched set.
               const fetchedIds = new Set(shopping.map((i) => i.id));
               const pendingCreateIds = new Set(
                 readQueue()
                   .filter((r) => r.method === "POST" && r.path === "/shopping-items/batch")
                   .flatMap((r) => {
-                    const body = r.body as { items?: ShoppingItem[] } | undefined;
+                    const body = r.body as { tag_id?: string; items?: ShoppingItem[] } | undefined;
+                    if (body?.tag_id !== tagId) return [];
                     return (body?.items ?? []).map((i) => i.id);
                   }),
               );
@@ -220,16 +212,7 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
               return [...base, ...unflushedLocalCreates];
             })();
 
-        return {
-          ...s,
-          tasks,
-          recipes,
-          shopping: nextShopping,
-          purchases,
-          tins,
-          tags,
-          logs: [],
-        };
+        return { ...s, shopping: nextShopping };
       });
 
       if (shopping.length > 0) {
@@ -237,10 +220,78 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
           (max, i) => (i.updated_at > max ? i.updated_at : max),
           shopping[0]!.updated_at,
         );
-        writeShoppingCursor(maxUpdatedAt);
+        writeShoppingCursor(tagId, maxUpdatedAt);
       }
     },
     [],
+  );
+
+  // Pull the canonical lists from the backend so ids/content match the
+  // server (not a locally-generated guess) — without this, every reinstall
+  // re-seeds with fresh random ids that can diverge from what's already
+  // there, and a second device never sees the first device's data at all.
+  const syncFromBackend = useCallback(
+    async (opts?: { incremental?: boolean }) => {
+      if (!isAuthenticated()) return;
+      const incremental = opts?.incremental ?? false;
+      const [tasks, recipes, purchases, tins, tags] = await Promise.all([
+        apiGet<MaintenanceTask[] | null>("/maintenance-tasks", null),
+        apiGet<Recipe[] | null>("/recipes", null),
+        apiGet<Purchase[] | null>("/purchases", null),
+        apiGet<Tin[] | null>("/tins", null),
+        apiGet<ShoppingTag[] | null>("/shopping-tags", null),
+      ]);
+      // null means the request failed (offline, 401, ...) — apiGet already
+      // handles those; keep whatever's local and let the queue sync later.
+      if (
+        tasks === null ||
+        recipes === null ||
+        purchases === null ||
+        tins === null ||
+        tags === null
+      ) {
+        return;
+      }
+
+      // Resolve which tag is active: keep the persisted choice if it still
+      // exists, else fall back to the first tag by sort_order, else null
+      // (a household with zero tags has nothing to scope items into yet).
+      const sortedTags = [...tags].sort((a, b) => a.sort_order - b.sort_order);
+      const resolvedTagId = tags.some((t) => t.id === activeTagId)
+        ? activeTagId
+        : (sortedTags[0]?.id ?? null);
+      if (resolvedTagId !== activeTagId) {
+        setActiveTagIdState(resolvedTagId);
+        writeActiveTagId(resolvedTagId);
+      }
+
+      const backendHasData = tasks.length + recipes.length + purchases.length + tins.length > 0;
+      // tags/shopping intentionally excluded from this seed-trigger check —
+      // a brand new household has 0 of both too, and this only governs
+      // whether to push the OTHER local-seed domains once.
+      if (!backendHasData && !incremental) {
+        // Brand-new account with nothing on the backend yet: seed it once,
+        // exactly like a fresh device would, so there's demo content either way.
+        if (localSeedRef.current) pushSeed(localSeedRef.current, resolvedTagId);
+      }
+
+      setState((s) => ({
+        ...s,
+        tasks,
+        recipes,
+        purchases,
+        tins,
+        tags,
+        logs: incremental ? s.logs : [],
+      }));
+
+      if (resolvedTagId !== null) {
+        await fetchItemsForTag(resolvedTagId, { incremental });
+      } else {
+        setState((s) => ({ ...s, shopping: [] }));
+      }
+    },
+    [activeTagId, fetchItemsForTag],
   );
 
   useEffect(() => {
@@ -329,6 +380,16 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
       hydrated,
       pendingSync,
       refresh,
+      activeTagId,
+      setActiveTag: (id) => {
+        if (id === activeTagId) return;
+        setActiveTagIdState(id);
+        writeActiveTagId(id);
+        // Clear immediately so a slow fetch never shows the previous tag's
+        // items under the newly-active tab.
+        setState((s) => ({ ...s, shopping: [] }));
+        void fetchItemsForTag(id, { incremental: false });
+      },
       logTask: (taskId) => {
         haptic();
         const loggedAt = new Date().toISOString();
@@ -360,6 +421,8 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         enqueue("PATCH", `/maintenance-tasks/${taskId}`, patch);
       },
       addShoppingItems: (items) => {
+        // No active tag (household has zero tags) — nothing to add into.
+        if (activeTagId === null) return;
         haptic();
         // id generation + enqueue() must run exactly once per call, so they
         // live outside the setState updater — React may invoke a functional
@@ -376,8 +439,9 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
           created_at: nowIso,
           updated_at: nowIso,
           sort_order: baseOrder + index,
+          tag_id: activeTagId,
         }));
-        enqueue("POST", "/shopping-items/batch", { items: created });
+        enqueue("POST", "/shopping-items/batch", { tag_id: activeTagId, items: created });
         setState((s) => ({ ...s, shopping: [...s.shopping, ...created] }));
       },
       toggleShoppingItem: (id) => {
@@ -476,7 +540,8 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         setState((s) => ({ ...s, shopping: s.shopping.filter((i) => !i.done) }));
       },
       categorizeShoppingItems: async () => {
-        const result = await apiCategorizeShoppingItems();
+        if (activeTagId === null) return false;
+        const result = await apiCategorizeShoppingItems(activeTagId);
         if (!result.ok) return false;
         setState((s) => ({ ...s, shopping: result.items }));
         return true;
@@ -532,7 +597,16 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         enqueue("DELETE", `/tins/${id}`);
       },
     }),
-    [state, hydrated, pendingSync, refresh, haptic, daysSincePurchase],
+    [
+      state,
+      hydrated,
+      pendingSync,
+      refresh,
+      haptic,
+      daysSincePurchase,
+      activeTagId,
+      fetchItemsForTag,
+    ],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

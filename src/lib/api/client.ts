@@ -25,6 +25,7 @@ const API_BASE =
 const QUEUE_KEY = "homesync.request-queue";
 const FAILED_QUEUE_KEY = "homesync.request-queue.failed";
 const SHOPPING_CURSOR_KEY = "homesync.shopping-cursor";
+const ACTIVE_TAG_KEY = "homesync.active-tag-id";
 
 export interface QueuedRequest {
   id: string;
@@ -234,40 +235,66 @@ export async function apiGet<T>(path: string, fallback: T): Promise<T> {
   }
 }
 
-/** Persists the shopping-items sync cursor across reloads, same idiom as readQueue/writeQueue. */
-export function readShoppingCursor(): string | null {
+/** Persists the shopping-items sync cursor across reloads, same idiom as
+ * readQueue/writeQueue. Scoped per tag_id — items are now tag-partitioned
+ * (Phase 3), so a cursor computed from one tag's items can't be reused as
+ * `since` for another tag's fetch. */
+export function readShoppingCursor(tagId: string): string | null {
   if (!isBrowser()) return null;
   try {
-    return window.localStorage.getItem(SHOPPING_CURSOR_KEY);
+    return window.localStorage.getItem(`${SHOPPING_CURSOR_KEY}.${tagId}`);
   } catch {
     return null;
   }
 }
 
-export function writeShoppingCursor(cursor: string | null): void {
+export function writeShoppingCursor(tagId: string, cursor: string | null): void {
   if (!isBrowser()) return;
+  const key = `${SHOPPING_CURSOR_KEY}.${tagId}`;
   if (cursor === null) {
-    window.localStorage.removeItem(SHOPPING_CURSOR_KEY);
+    window.localStorage.removeItem(key);
   } else {
-    window.localStorage.setItem(SHOPPING_CURSOR_KEY, cursor);
+    window.localStorage.setItem(key, cursor);
+  }
+}
+
+/** Persists which tag tab is active across reloads, same idiom as the
+ * shopping cursor above. */
+export function readActiveTagId(): string | null {
+  if (!isBrowser()) return null;
+  try {
+    return window.localStorage.getItem(ACTIVE_TAG_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function writeActiveTagId(tagId: string | null): void {
+  if (!isBrowser()) return;
+  if (tagId === null) {
+    window.localStorage.removeItem(ACTIVE_TAG_KEY);
+  } else {
+    window.localStorage.setItem(ACTIVE_TAG_KEY, tagId);
   }
 }
 
 /**
- * GET /shopping-items?since=... — unlike apiGet, distinguishes a 422
- * (invalid `since`) from other failures so the caller can decide whether to
- * drop the cursor and retry.
+ * GET /shopping-items?tag_id=&since=... — `tag_id` is required (Phase 3:
+ * items are tag-partitioned). Unlike apiGet, distinguishes a 422 (missing/
+ * invalid tag_id, or a cross-household tag — also covers the old "invalid
+ * since" case) from other failures so the caller can decide whether to drop
+ * the cursor and retry.
  */
 export async function apiGetShoppingItems(
+  tagId: string,
   since?: string,
 ): Promise<{ ok: true; items: ShoppingItem[] } | { ok: false; invalidSince: boolean } | null> {
   // See the comment on flushQueue above re: not trusting navigator.onLine.
   if (!isBrowser()) return null;
   try {
-    const url = since
-      ? `${API_BASE}/shopping-items?since=${encodeURIComponent(since)}`
-      : `${API_BASE}/shopping-items`;
-    const res = await fetch(url, {
+    const params = new URLSearchParams({ tag_id: tagId });
+    if (since) params.set("since", since);
+    const res = await fetch(`${API_BASE}/shopping-items?${params.toString()}`, {
       headers: { Accept: "application/json", ...authHeaders() },
       signal: AbortSignal.timeout(10_000),
     });
@@ -508,13 +535,19 @@ export async function apiGetRecipeImport(
   return { ok: true, data: (await res.json()) as RecipeImportStatus };
 }
 
-/** POST /shopping-items/categorize — synchronous, caller needs the reordered list immediately. */
-export async function apiCategorizeShoppingItems(): Promise<
-  { ok: true; items: ShoppingItem[] } | { ok: false; status: number }
-> {
+/**
+ * POST /shopping-items/categorize — synchronous, caller needs the reordered
+ * list immediately. `tag_id` required (Phase 3): idempotency (409 on an
+ * unchanged list) is now per-tag, so a 409 here means THIS tag's list
+ * hasn't changed since its last categorize — another tag may still succeed.
+ */
+export async function apiCategorizeShoppingItems(
+  tagId: string,
+): Promise<{ ok: true; items: ShoppingItem[] } | { ok: false; status: number }> {
   const res = await fetch(`${API_BASE}/shopping-items/categorize`, {
     method: "POST",
-    headers: { Accept: "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json", Accept: "application/json", ...authHeaders() },
+    body: JSON.stringify({ tag_id: tagId }),
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) return { ok: false, status: res.status };
@@ -661,7 +694,7 @@ export async function apiCreateShoppingTag(
  * actually changed, same convention as shopping-item reordering.
  */
 export async function apiPatchShoppingTag(
-  id: number,
+  id: string,
   patch: Partial<Pick<ShoppingTag, "name" | "sort_order">>,
 ): Promise<{ ok: true; data: ShoppingTag } | { ok: false; status: number }> {
   try {

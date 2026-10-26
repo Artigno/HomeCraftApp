@@ -69,7 +69,8 @@ export interface Tin {
 /** GET/POST/PATCH /shopping-tags — household's shopping-list tabs (Biedronka,
  * Silla, Rossman, ...). No DELETE: tags can't be removed (deliberate). */
 export interface ShoppingTag {
-  id: number;
+  /** UUID, like every other id in this API — not auto-increment. */
+  id: string;
   name: string;
   sort_order: number;
   created_at: string;
@@ -82,6 +83,9 @@ export interface ShoppingItem {
   amount?: string;
   recipe_title?: string;
   done: boolean;
+  /** Household items are partitioned by tag (shopping-list "tabs") — every
+   * item belongs to exactly one tag, items can't move between tags. */
+  tag_id: string;
   /** days since the item was last purchased, if recently bought. The API
    * serializes an unset value as `null`, not an omitted key — never compare
    * against `undefined` alone when reading this field. */
