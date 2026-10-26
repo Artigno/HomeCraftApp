@@ -465,15 +465,24 @@ function TagTab({
     id: String(tag.id),
     disabled: editing,
   });
+  // Enter's keydown commit and the blur it can trigger in the same tick
+  // both call commit() before React has unmounted the input (setEditing is
+  // batched, not synchronous) — a plain ref guard (synchronous, unlike
+  // state) stops the second call from double-firing the PATCH.
+  const committingRef = useRef(false);
 
   async function commit() {
+    if (committingRef.current) return;
+    committingRef.current = true;
     const trimmed = draft.trim();
     setEditing(false);
     if (!trimmed || trimmed === tag.name) {
       setDraft(tag.name);
+      committingRef.current = false;
       return;
     }
     const ok = await onRename(trimmed);
+    committingRef.current = false;
     if (!ok) {
       setDraft(tag.name);
       toast.error("Nie udało się zmienić nazwy tagu. Sprawdź, czy taka nazwa już nie istnieje.");
@@ -536,15 +545,23 @@ function AddTagButton({ onAdd }: { onAdd: (name: string) => Promise<boolean> }) 
   const [active, setActive] = useState(false);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // See TagTab's committingRef: Enter's keydown commit and the blur it can
+  // trigger in the same tick both reach here before the `submitting` state
+  // update has flushed — a synchronous ref is what actually blocks the
+  // second POST.
+  const committingRef = useRef(false);
 
   async function commit() {
+    if (committingRef.current) return;
     const trimmed = draft.trim();
     if (!trimmed) {
       setActive(false);
       return;
     }
+    committingRef.current = true;
     setSubmitting(true);
     const ok = await onAdd(trimmed);
+    committingRef.current = false;
     setSubmitting(false);
     if (ok) {
       setDraft("");
