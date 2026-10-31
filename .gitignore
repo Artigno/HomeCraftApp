@@ -8,6 +8,9 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+# This repo uses bun (bun.lock is canonical) — CI runs `bun install --frozen-lockfile`.
+# An npm-generated package-lock.json drifting out of sync with bun.lock breaks that install.
+package-lock.json
 dist
 dist-ssr
 .output
