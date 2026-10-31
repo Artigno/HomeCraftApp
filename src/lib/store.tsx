@@ -110,6 +110,37 @@ export function taskStatus(task: MaintenanceTask): TaskStatus {
   return "good";
 }
 
+/** A full resync otherwise replaces a domain's state wholesale — a newly
+ * created row whose create request hasn't flushed yet would vanish until
+ * that create lands server-side. Carry forward any local row still covered
+ * by a pending create and absent from the fetched set. Same pattern as
+ * fetchItemsForTag's shopping-items guard below, generalized for reuse
+ * across recipes/tasks/purchases/tins in syncFromBackend. */
+export function carryForwardUnflushedCreates<T extends { id: string }>(
+  fetched: T[],
+  local: T[],
+  pendingIds: Set<string>,
+): T[] {
+  if (pendingIds.size === 0) return fetched;
+  const fetchedIds = new Set(fetched.map((item) => item.id));
+  const unflushedLocalCreates = local.filter(
+    (item) => pendingIds.has(item.id) && !fetchedIds.has(item.id),
+  );
+  return unflushedLocalCreates.length ? [...fetched, ...unflushedLocalCreates] : fetched;
+}
+
+/** Collects the ids of pending-queue creates for a single-object-body POST
+ * path (i.e. every domain here except /shopping-items/batch, whose body
+ * nests an `items` array and is handled separately in fetchItemsForTag). */
+function pendingCreateIdsFor(path: string): Set<string> {
+  return new Set(
+    readQueue()
+      .filter((r) => r.method === "POST" && r.path === path)
+      .map((r) => (r.body as { id?: string } | undefined)?.id)
+      .filter((id): id is string => id !== undefined),
+  );
+}
+
 /** Push the local seed to the backend so a brand-new account has matching
  * rows. `tagId` is null for a truly empty household (zero tags) — the
  * shopping-items batch is skipped in that case since there's no tag to
@@ -284,10 +315,18 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
 
       setState((s) => ({
         ...s,
-        tasks,
-        recipes,
-        purchases,
-        tins,
+        tasks: carryForwardUnflushedCreates(
+          tasks,
+          s.tasks,
+          pendingCreateIdsFor("/maintenance-tasks"),
+        ),
+        recipes: carryForwardUnflushedCreates(recipes, s.recipes, pendingCreateIdsFor("/recipes")),
+        purchases: carryForwardUnflushedCreates(
+          purchases,
+          s.purchases,
+          pendingCreateIdsFor("/receipts/process"),
+        ),
+        tins: carryForwardUnflushedCreates(tins, s.tins, pendingCreateIdsFor("/tins")),
         tags,
         logs: incremental ? s.logs : [],
       }));

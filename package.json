@@ -10,7 +10,8 @@
     "build:gh-pages": "GH_PAGES=true vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "vitest run"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -89,6 +90,7 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "8.1.5"
+    "vite": "8.1.5",
+    "vitest": "^4.1.12"
   }
 }

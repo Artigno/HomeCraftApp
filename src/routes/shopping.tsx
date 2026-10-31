@@ -666,6 +666,7 @@ function AddItemRow({ onAdd }: { onAdd: (name: string) => void }) {
     <li>
       <Input
         autoFocus
+        enterKeyHint="done"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
@@ -675,7 +676,12 @@ function AddItemRow({ onAdd }: { onAdd: (name: string) => void }) {
           }
         }}
         onBlur={() => {
-          if (!draft.trim()) setActive(false);
+          // The mobile keyboard's "done"/tick return key blurs the input
+          // without always firing a synthesized Enter keydown — commit a
+          // non-empty draft here too so the checkmark icon's implied
+          // "confirm" actually happens instead of just closing the keyboard.
+          if (draft.trim()) commit();
+          else setActive(false);
         }}
         placeholder="Nazwa produktu"
         className="h-[52px] rounded-2xl px-4 text-[15px]"
