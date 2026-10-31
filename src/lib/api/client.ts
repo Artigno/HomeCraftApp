@@ -169,49 +169,61 @@ export function flushQueue(opts?: { force?: boolean }): Promise<void> {
   const stale = flushPromise && Date.now() - flushStartedAt >= FLUSH_STALE_MS;
   if (flushPromise && !stale && !opts?.force) return flushPromise;
   flushStartedAt = Date.now();
-  flushPromise = (async () => {
-    try {
-      let queue = readQueue();
-      while (queue.length > 0) {
-        const next = queue[0];
-        if (!next) break;
-        try {
-          let watchdogTimer: ReturnType<typeof setTimeout>;
-          const res = await Promise.race([
-            fetch(`${API_BASE}${next.path}`, {
-              method: next.method,
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-                ...authHeaders(),
-              },
-              ...(next.body ? { body: JSON.stringify(next.body) } : {}),
-              signal: AbortSignal.timeout(10_000),
-            }),
-            new Promise<never>((_, reject) => {
-              watchdogTimer = setTimeout(
-                () => reject(new Error("flush watchdog timeout")),
-                FLUSH_WATCHDOG_MS,
-              );
-            }),
-          ]).finally(() => clearTimeout(watchdogTimer));
-          if (res.status === 401) {
-            handleUnauthorized();
-            break; // don't dead-letter or retry — the queue is retried after re-login
-          }
-          if (await checkPending(res)) break; // stay queued — retried once the owner approves
-          if (!res.ok && res.status >= 500) break; // retry later
-          if (!res.ok) recordFailed(next); // 4xx — backend rejected it, dead-letter instead of silent drop
-        } catch {
-          break; // still offline / backend down -> keep the queue intact
+  // Run the flush, then clear flushPromise via .finally() chained onto the
+  // RESULT rather than inside the async body itself: when the queue is
+  // empty, the body below completes synchronously (no `await` is ever
+  // reached), so a `finally` block inside the IIFE would null out
+  // flushPromise *before* the `flushPromise = (async () => {...})()`
+  // assignment below had even finished running — immediately clobbering
+  // that null back to the (already-settled) promise object. The next
+  // enqueue()'s flushQueue() call would then see a truthy, non-stale
+  // flushPromise and short-circuit-return it without ever reading the
+  // freshly-queued item, silently stalling every add for up to
+  // FLUSH_STALE_MS. Promise callbacks (.then/.finally) are always deferred
+  // to a microtask, even for an already-settled promise, so chaining here
+  // instead guarantees the clear happens strictly after this assignment.
+  const run = (async () => {
+    let queue = readQueue();
+    while (queue.length > 0) {
+      const next = queue[0];
+      if (!next) break;
+      try {
+        let watchdogTimer: ReturnType<typeof setTimeout>;
+        const res = await Promise.race([
+          fetch(`${API_BASE}${next.path}`, {
+            method: next.method,
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...authHeaders(),
+            },
+            ...(next.body ? { body: JSON.stringify(next.body) } : {}),
+            signal: AbortSignal.timeout(10_000),
+          }),
+          new Promise<never>((_, reject) => {
+            watchdogTimer = setTimeout(
+              () => reject(new Error("flush watchdog timeout")),
+              FLUSH_WATCHDOG_MS,
+            );
+          }),
+        ]).finally(() => clearTimeout(watchdogTimer));
+        if (res.status === 401) {
+          handleUnauthorized();
+          break; // don't dead-letter or retry — the queue is retried after re-login
         }
-        queue = readQueue().slice(1);
-        writeQueue(queue);
+        if (await checkPending(res)) break; // stay queued — retried once the owner approves
+        if (!res.ok && res.status >= 500) break; // retry later
+        if (!res.ok) recordFailed(next); // 4xx — backend rejected it, dead-letter instead of silent drop
+      } catch {
+        break; // still offline / backend down -> keep the queue intact
       }
-    } finally {
-      flushPromise = null;
+      queue = readQueue().slice(1);
+      writeQueue(queue);
     }
   })();
+  flushPromise = run.finally(() => {
+    flushPromise = null;
+  });
   return flushPromise;
 }
 
