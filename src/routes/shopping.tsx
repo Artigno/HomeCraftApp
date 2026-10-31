@@ -288,6 +288,11 @@ function ShoppingList() {
       <TagTabBar
         tags={tags}
         activeTagId={activeTagId}
+        // The active tag's own pending count comes from live local state
+        // (instant on check/uncheck); every other tag only has whatever
+        // pending_count the last tags resync returned, since items for a
+        // non-active tag aren't fetched client-side (tag-partitioning).
+        activeTagPendingCount={pending}
         onSelect={setActiveTag}
         onAdd={addTag}
         onRename={renameTag}
@@ -389,6 +394,7 @@ function ShoppingList() {
 function TagTabBar({
   tags,
   activeTagId,
+  activeTagPendingCount,
   onSelect,
   onAdd,
   onRename,
@@ -397,6 +403,7 @@ function TagTabBar({
 }: {
   tags: ShoppingTag[];
   activeTagId: string | null;
+  activeTagPendingCount: number;
   onSelect: (id: string) => void;
   onAdd: (name: string) => Promise<boolean>;
   onRename: (id: string, name: string) => Promise<boolean>;
@@ -430,6 +437,7 @@ function TagTabBar({
               key={tag.id}
               tag={tag}
               active={tag.id === activeTagId}
+              count={tag.id === activeTagId ? activeTagPendingCount : tag.pending_count}
               onSelect={() => onSelect(tag.id)}
               onRename={(name) => onRename(tag.id, name)}
               onDelete={() => onDelete(tag.id)}
@@ -445,12 +453,14 @@ function TagTabBar({
 function TagTab({
   tag,
   active,
+  count,
   onSelect,
   onRename,
   onDelete,
 }: {
   tag: ShoppingTag;
   active: boolean;
+  count: number;
   onSelect: () => void;
   onRename: (name: string) => Promise<boolean>;
   onDelete: () => Promise<{ ok: true } | { ok: false; conflict: boolean }>;
@@ -565,11 +575,19 @@ function TagTab({
         }
       }}
       className={cn(
-        "h-9 shrink-0 cursor-grab touch-none whitespace-nowrap rounded-full px-4 text-sm font-medium active:cursor-grabbing",
+        "flex h-9 shrink-0 cursor-grab touch-none items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-medium active:cursor-grabbing",
         active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
       )}
     >
       {tag.name}
+      <span
+        className={cn(
+          "rounded-full px-1.5 text-xs font-semibold",
+          active ? "bg-primary-foreground/20" : "bg-foreground/10",
+        )}
+      >
+        {count}
+      </span>
     </button>
   );
 }

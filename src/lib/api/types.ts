@@ -75,6 +75,8 @@ export interface ShoppingTag {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  /** Count of this tag's shopping_items with done=false, computed server-side. */
+  pending_count: number;
 }
 
 export interface ShoppingItem {
