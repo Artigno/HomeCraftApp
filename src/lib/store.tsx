@@ -344,7 +344,15 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
     let raw: string | null = null;
     try {
       raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) setState(JSON.parse(raw) as HomeSyncState);
+      // Merge, don't replace: a cache written before a field existed (e.g.
+      // `tags`, added after this cache was last written) would otherwise
+      // wholesale-overwrite the seed state with an object missing that key,
+      // leaving it `undefined` until the next successful syncFromBackend —
+      // crashing anything that iterates it (TagTabBar's `[...tags]`) in the
+      // meantime. Spreading the parsed cache over the current seed keeps
+      // any key the cache doesn't have.
+      if (raw)
+        setState((s) => ({ ...s, ...(JSON.parse(raw as string) as Partial<HomeSyncState>) }));
     } catch {
       /* corrupt cache -> keep seed */
     }
