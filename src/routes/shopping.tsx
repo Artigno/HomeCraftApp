@@ -442,9 +442,18 @@ function TagTabBar({
           // the page, which reads as "barely scrollable". Taller vertical
           // padding (pt-3 pb-4 vs. the previous pt-3 pb-1) gives a finger
           // more room to start the gesture without drifting onto the
-          // shopping-item list below it.
-          className="flex gap-2 overflow-x-auto overscroll-x-contain px-4 pt-3 pb-4"
-          style={{ WebkitOverflowScrolling: "touch" }}
+          // shopping-item list below it. touch-action: pan-x (also set
+          // explicitly below on the name+count button, since the computed
+          // touch-action a touch's start point resolves against is its own
+          // element first) tells the browser this whole strip is
+          // horizontal-only, so it commits to panning immediately instead
+          // of waiting to see if a slightly-diagonal swipe should go to the
+          // page's own vertical scroll — without it, relying purely on
+          // overflow-x-auto to imply the scroll axis is inconsistent across
+          // mobile browsers, especially when the touch starts on a nested
+          // interactive element like a <button>.
+          className="flex touch-pan-x gap-2 overflow-x-auto overscroll-x-contain px-4 pt-3 pb-4"
+          style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}
         >
           {sorted.map((tag) => (
             <TagTab
@@ -620,7 +629,8 @@ function TagTab({
             onSelect();
           }
         }}
-        className="flex items-center gap-1.5 whitespace-nowrap py-0 pl-4 pr-1.5 text-sm font-medium disabled:opacity-80"
+        style={{ touchAction: "pan-x" }}
+        className="flex touch-pan-x items-center gap-1.5 whitespace-nowrap py-0 pl-4 pr-1.5 text-sm font-medium disabled:opacity-80"
       >
         {tag.name}
         <span
