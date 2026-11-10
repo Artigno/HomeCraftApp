@@ -415,6 +415,13 @@ function TagTabBar({
     useSensor(PointerSensor, { activationConstraint: { delay: 400, tolerance: 10 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  // A per-tag grip handle is only ever needed for the rare "reorder tags"
+  // action — showing one on every pill all the time just clutters the bar
+  // and makes it harder to read at a glance. Keep pills handle-free by
+  // default; an explicit toggle switches the whole bar into a reorder mode
+  // that shows handles and suspends tap-to-select/rename, same idea as
+  // iOS's "jiggle mode" for home-screen icons.
+  const [reorderMode, setReorderMode] = useState(false);
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -445,12 +452,28 @@ function TagTabBar({
               tag={tag}
               active={tag.id === activeTagId}
               count={tag.id === activeTagId ? activeTagPendingCount : tag.pending_count}
+              reorderMode={reorderMode}
               onSelect={() => onSelect(tag.id)}
               onRename={(name) => onRename(tag.id, name)}
               onDelete={() => onDelete(tag.id)}
             />
           ))}
-          <AddTagButton onAdd={onAdd} />
+          {!reorderMode && <AddTagButton onAdd={onAdd} />}
+          {sorted.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setReorderMode((v) => !v)}
+              aria-label={reorderMode ? "Zakończ zmianę kolejności tagów" : "Zmień kolejność tagów"}
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full active:scale-95",
+                reorderMode
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground active:bg-muted",
+              )}
+            >
+              {reorderMode ? <Check className="size-4" /> : <GripVertical className="size-4" />}
+            </button>
+          )}
         </div>
       </SortableContext>
     </DndContext>
@@ -461,6 +484,7 @@ function TagTab({
   tag,
   active,
   count,
+  reorderMode,
   onSelect,
   onRename,
   onDelete,
@@ -468,6 +492,7 @@ function TagTab({
   tag: ShoppingTag;
   active: boolean;
   count: number;
+  reorderMode: boolean;
   onSelect: () => void;
   onRename: (name: string) => Promise<boolean>;
   onDelete: () => Promise<{ ok: true } | { ok: false; conflict: boolean }>;
@@ -498,7 +523,7 @@ function TagTab({
   }
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tag.id,
-    disabled: editing,
+    disabled: editing || !reorderMode,
   });
   // Enter's keydown commit and the blur it can trigger in the same tick
   // both call commit() before React has unmounted the input (setEditing is
@@ -586,6 +611,7 @@ function TagTab({
     >
       <button
         type="button"
+        disabled={reorderMode}
         onClick={() => {
           if (active) {
             setDraft(tag.name);
@@ -594,7 +620,7 @@ function TagTab({
             onSelect();
           }
         }}
-        className="flex items-center gap-1.5 whitespace-nowrap py-0 pl-4 pr-1.5 text-sm font-medium"
+        className="flex items-center gap-1.5 whitespace-nowrap py-0 pl-4 pr-1.5 text-sm font-medium disabled:opacity-80"
       >
         {tag.name}
         <span
@@ -606,20 +632,22 @@ function TagTab({
           {count}
         </span>
       </button>
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        aria-label="Przesuń tag"
-        style={{ touchAction: "none" }}
-        onPointerDown={(e) => {
-          listeners?.["onPointerDown"]?.(e);
-          e.stopPropagation();
-        }}
-        className="flex shrink-0 cursor-grab touch-none items-center py-0 pr-3 pl-1 opacity-60 active:cursor-grabbing"
-      >
-        <GripVertical className="size-3.5 rotate-90" />
-      </button>
+      {reorderMode && (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label="Przesuń tag"
+          style={{ touchAction: "none" }}
+          onPointerDown={(e) => {
+            listeners?.["onPointerDown"]?.(e);
+            e.stopPropagation();
+          }}
+          className="flex shrink-0 cursor-grab touch-none items-center py-0 pr-3 pl-1 opacity-60 active:cursor-grabbing"
+        >
+          <GripVertical className="size-3.5 rotate-90" />
+        </button>
+      )}
     </div>
   );
 }
