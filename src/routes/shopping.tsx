@@ -429,7 +429,14 @@ function TagTabBar({
     <DndContext id="shopping-tags-dnd" sensors={sensors} onDragEnd={handleDragEnd}>
       <SortableContext items={sorted.map((t) => t.id)} strategy={horizontalListSortingStrategy}>
         <div
-          className="flex gap-2 overflow-x-auto px-4 pt-3 pb-1"
+          // overscroll-x-contain stops a horizontal swipe that reaches the
+          // end of the bar from "chaining" into the page's own scroll —
+          // without it, a swipe that overshoots feels like it's fighting
+          // the page, which reads as "barely scrollable". Taller vertical
+          // padding (pt-3 pb-4 vs. the previous pt-3 pb-1) gives a finger
+          // more room to start the gesture without drifting onto the
+          // shopping-item list below it.
+          className="flex gap-2 overflow-x-auto overscroll-x-contain px-4 pt-3 pb-4"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           {sorted.map((tag) => (
@@ -540,7 +547,7 @@ function TagTab({
             }
           }}
           onBlur={() => void commit()}
-          className="h-9 w-24 rounded-full px-3 text-sm"
+          className="h-10 w-24 rounded-full px-3 text-sm"
         />
         <button
           type="button"
@@ -580,7 +587,7 @@ function TagTab({
         // touch-none would block the browser's own scroll gesture entirely,
         // and the drag-vs-scroll disambiguation already happens via the
         // PointerSensor's delay/tolerance activationConstraint above.
-        "flex h-9 shrink-0 cursor-grab touch-pan-x items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-medium active:cursor-grabbing",
+        "flex h-10 shrink-0 cursor-grab touch-pan-x items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-medium active:cursor-grabbing",
         active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
       )}
     >
@@ -633,7 +640,7 @@ function AddTagButton({ onAdd }: { onAdd: (name: string) => Promise<boolean> }) 
         type="button"
         onClick={() => setActive(true)}
         aria-label="Dodaj tag"
-        className="flex h-9 shrink-0 items-center justify-center gap-1 rounded-full border-2 border-dashed border-border px-3 text-sm text-muted-foreground active:scale-95"
+        className="flex h-10 shrink-0 items-center justify-center gap-1 rounded-full border-2 border-dashed border-border px-3 text-sm text-muted-foreground active:scale-95"
       >
         <Plus className="size-4" />
       </button>
