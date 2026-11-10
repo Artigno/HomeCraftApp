@@ -567,40 +567,60 @@ function TagTab({
   }
 
   return (
-    <button
+    // dnd-kit's own docs: touch-action can't be changed mid-gesture, so a
+    // PointerSensor draggable needs touch-action: none for reliable drag —
+    // but that same property is exactly what blocks the browser's native
+    // scroll. One element can't be both a full-width scroll target and a
+    // drag source on touch. Split them: setNodeRef/transform stay on this
+    // wrapper (so the whole pill still moves together during a reorder),
+    // the name+count button carries zero drag listeners (so a touch
+    // anywhere on it is pure, native, zero-latency scroll), and only the
+    // small grip button is an actual PointerSensor draggable.
+    <div
       ref={setNodeRef}
-      type="button"
-      {...attributes}
-      {...listeners}
       style={style}
-      onClick={() => {
-        if (active) {
-          setDraft(tag.name);
-          setEditing(true);
-        } else {
-          onSelect();
-        }
-      }}
       className={cn(
-        // touch-pan-x (not touch-none): the bar must stay horizontally
-        // swipe-scrollable since these pills span nearly its whole width —
-        // touch-none would block the browser's own scroll gesture entirely,
-        // and the drag-vs-scroll disambiguation already happens via the
-        // PointerSensor's delay/tolerance activationConstraint above.
-        "flex h-10 shrink-0 cursor-grab touch-pan-x items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-medium active:cursor-grabbing",
+        "flex h-10 shrink-0 items-stretch overflow-hidden rounded-full",
         active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
       )}
     >
-      {tag.name}
-      <span
-        className={cn(
-          "rounded-full px-1.5 text-xs font-semibold",
-          active ? "bg-primary-foreground/20" : "bg-foreground/10",
-        )}
+      <button
+        type="button"
+        onClick={() => {
+          if (active) {
+            setDraft(tag.name);
+            setEditing(true);
+          } else {
+            onSelect();
+          }
+        }}
+        className="flex items-center gap-1.5 whitespace-nowrap py-0 pl-4 pr-1.5 text-sm font-medium"
       >
-        {count}
-      </span>
-    </button>
+        {tag.name}
+        <span
+          className={cn(
+            "rounded-full px-1.5 text-xs font-semibold",
+            active ? "bg-primary-foreground/20" : "bg-foreground/10",
+          )}
+        >
+          {count}
+        </span>
+      </button>
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label="Przesuń tag"
+        style={{ touchAction: "none" }}
+        onPointerDown={(e) => {
+          listeners?.["onPointerDown"]?.(e);
+          e.stopPropagation();
+        }}
+        className="flex shrink-0 cursor-grab touch-none items-center py-0 pr-3 pl-1 opacity-60 active:cursor-grabbing"
+      >
+        <GripVertical className="size-3.5 rotate-90" />
+      </button>
+    </div>
   );
 }
 
