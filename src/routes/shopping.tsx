@@ -575,7 +575,12 @@ function TagTab({
         }
       }}
       className={cn(
-        "flex h-9 shrink-0 cursor-grab touch-none items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-medium active:cursor-grabbing",
+        // touch-pan-x (not touch-none): the bar must stay horizontally
+        // swipe-scrollable since these pills span nearly its whole width —
+        // touch-none would block the browser's own scroll gesture entirely,
+        // and the drag-vs-scroll disambiguation already happens via the
+        // PointerSensor's delay/tolerance activationConstraint above.
+        "flex h-9 shrink-0 cursor-grab touch-pan-x items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-medium active:cursor-grabbing",
         active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
       )}
     >
