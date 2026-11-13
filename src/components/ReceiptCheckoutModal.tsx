@@ -122,6 +122,18 @@ export function ReceiptCheckoutModal({
     onOpenChange(false);
   }
 
+  async function handleQuickFinish() {
+    if (submitting) return;
+    setSubmitting(true);
+    await completePurchase({
+      store: "Sklep",
+      total: 0,
+      category: DEFAULT_CATEGORY,
+    });
+    toast.success("Zakupy zapisane", { description: `${boughtItems.length} produktów` });
+    onOpenChange(false);
+  }
+
   async function handleConfirmReview() {
     if (submitting) return;
     setSubmitting(true);
@@ -164,9 +176,27 @@ export function ReceiptCheckoutModal({
                 onChange={(e) => void handleFileSelected(e)}
               />
             </label>
-            <Button variant="ghost" className="h-11 w-full rounded-xl" onClick={goToManualForm}>
-              Pomiń zdjęcie
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                className="h-11 flex-1 rounded-xl"
+                onClick={goToManualForm}
+              >
+                Pomiń zdjęcie
+              </Button>
+              <Button
+                variant="ghost"
+                className="h-11 flex-1 rounded-xl"
+                onClick={() => void handleQuickFinish()}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : (
+                  "Pomiń budżetowanie / zakończ zakupy"
+                )}
+              </Button>
+            </div>
           </div>
         )}
 
