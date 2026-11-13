@@ -50,8 +50,14 @@ export function ReceiptCheckoutModal({
   // completePurchase-mid-submit race this used to cause (it still prepends
   // to `purchases` before this modal closes, which isn't a reason to reset).
   const sessionKeyRef = useRef<string | null>(null);
+  // Guards against the sessionKey-reset effect firing mid-submit: completePurchase()
+  // removes the bought items from state before this modal's onOpenChange(false) runs,
+  // so boughtItems changes identity while `open` is still true — without this guard
+  // the effect below sees a "new session", resets step back to "capture", and the
+  // click appears to do nothing (modal stuck open, loader gone).
+  const submittingRef = useRef(false);
   useEffect(() => {
-    if (!open) return;
+    if (!open || submittingRef.current) return;
     const sessionKey = boughtItems
       .map((i) => i.id)
       .sort()
@@ -112,6 +118,7 @@ export function ReceiptCheckoutModal({
   async function handleConfirmManual() {
     if (submitting) return;
     setSubmitting(true);
+    submittingRef.current = true;
     const parsedTotal = Number(total);
     await completePurchase({
       store: store.trim() || "Sklep",
@@ -119,24 +126,28 @@ export function ReceiptCheckoutModal({
       category: category.trim() || DEFAULT_CATEGORY,
     });
     toast.success("Zakupy zapisane", { description: `${boughtItems.length} produktów` });
+    submittingRef.current = false;
     onOpenChange(false);
   }
 
   async function handleQuickFinish() {
     if (submitting) return;
     setSubmitting(true);
+    submittingRef.current = true;
     await completePurchase({
       store: "Sklep",
       total: 0,
       category: DEFAULT_CATEGORY,
     });
     toast.success("Zakupy zapisane", { description: `${boughtItems.length} produktów` });
+    submittingRef.current = false;
     onOpenChange(false);
   }
 
   async function handleConfirmReview() {
     if (submitting) return;
     setSubmitting(true);
+    submittingRef.current = true;
     const parsedTotal = Number(total);
     await completePurchase({
       store: store.trim() || "Sklep",
@@ -151,6 +162,7 @@ export function ReceiptCheckoutModal({
       ...(receiptImagePath ? { receipt_image_path: receiptImagePath } : {}),
     });
     toast.success("Zakupy zapisane", { description: `${lines.length} produktów` });
+    submittingRef.current = false;
     onOpenChange(false);
   }
 
@@ -193,7 +205,7 @@ export function ReceiptCheckoutModal({
                 {submitting ? (
                   <Loader2 className="size-5 animate-spin" />
                 ) : (
-                  "Pomiń budżetowanie / zakończ zakupy"
+                  "Zakończ bez budżetu"
                 )}
               </Button>
             </div>
