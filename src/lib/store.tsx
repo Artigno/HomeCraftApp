@@ -141,6 +141,40 @@ function pendingCreateIdsFor(path: string): Set<string> {
   );
 }
 
+/** Task ids with an unflushed /maintenance-logs POST still in the queue —
+ * logTask() sets last_done_at optimistically but the only durable write is
+ * that queued log; until it flushes, the backend's /maintenance-tasks GET
+ * still reports the task's previous last_done_at. Without this guard, a
+ * resync racing ahead of the flush (app foregrounded, pull-to-refresh, a
+ * push event) reverts the just-logged date back to the stale one — same
+ * class of bug fetchItemsForTag's applyQueueOverride guards against for
+ * shopping-item toggles. */
+function pendingLogTaskIds(): Set<string> {
+  return new Set(
+    readQueue()
+      .filter((r) => r.method === "POST" && r.path === "/maintenance-logs")
+      .map((r) => (r.body as { task_id?: string } | undefined)?.task_id)
+      .filter((id): id is string => id !== undefined),
+  );
+}
+
+/** For any fetched task with a still-unflushed /maintenance-logs POST,
+ * keep the pre-sync local last_done_at instead of the (stale) fetched one.
+ * Pure so it can be unit-tested without mocking the request queue. */
+export function applyPendingLogOverride(
+  fetched: MaintenanceTask[],
+  local: MaintenanceTask[],
+  pendingTaskIds: Set<string>,
+): MaintenanceTask[] {
+  if (pendingTaskIds.size === 0) return fetched;
+  const preSyncById = new Map(local.map((t) => [t.id, t]));
+  return fetched.map((t) => {
+    if (!pendingTaskIds.has(t.id)) return t;
+    const pre = preSyncById.get(t.id);
+    return pre ? { ...t, last_done_at: pre.last_done_at } : t;
+  });
+}
+
 /** Push the local seed to the backend so a brand-new account has matching
  * rows. `tagId` is null for a truly empty household (zero tags) — the
  * shopping-items batch is skipped in that case since there's no tag to
@@ -313,23 +347,30 @@ export function HomeSyncProvider({ children }: { children: ReactNode }) {
         if (localSeedRef.current) pushSeed(localSeedRef.current, resolvedTagId);
       }
 
-      setState((s) => ({
-        ...s,
-        tasks: carryForwardUnflushedCreates(
-          tasks,
+      setState((s) => {
+        const fetchedTasks = applyPendingLogOverride(
+          carryForwardUnflushedCreates(tasks, s.tasks, pendingCreateIdsFor("/maintenance-tasks")),
           s.tasks,
-          pendingCreateIdsFor("/maintenance-tasks"),
-        ),
-        recipes: carryForwardUnflushedCreates(recipes, s.recipes, pendingCreateIdsFor("/recipes")),
-        purchases: carryForwardUnflushedCreates(
-          purchases,
-          s.purchases,
-          pendingCreateIdsFor("/receipts/process"),
-        ),
-        tins: carryForwardUnflushedCreates(tins, s.tins, pendingCreateIdsFor("/tins")),
-        tags,
-        logs: incremental ? s.logs : [],
-      }));
+          pendingLogTaskIds(),
+        );
+        return {
+          ...s,
+          tasks: fetchedTasks,
+          recipes: carryForwardUnflushedCreates(
+            recipes,
+            s.recipes,
+            pendingCreateIdsFor("/recipes"),
+          ),
+          purchases: carryForwardUnflushedCreates(
+            purchases,
+            s.purchases,
+            pendingCreateIdsFor("/receipts/process"),
+          ),
+          tins: carryForwardUnflushedCreates(tins, s.tins, pendingCreateIdsFor("/tins")),
+          tags,
+          logs: incremental ? s.logs : [],
+        };
+      });
 
       if (resolvedTagId !== null) {
         await fetchItemsForTag(resolvedTagId, { incremental });
